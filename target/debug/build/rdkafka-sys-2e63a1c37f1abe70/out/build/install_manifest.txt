@@ -1,0 +1,13 @@
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/lib/cmake/RdKafka/RdKafkaConfig.cmake
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/lib/cmake/RdKafka/RdKafkaConfigVersion.cmake
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/lib/cmake/RdKafka/FindLZ4.cmake
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/lib/cmake/RdKafka/RdKafkaTargets.cmake
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/lib/cmake/RdKafka/RdKafkaTargets-debug.cmake
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/share/licenses/librdkafka/LICENSES.txt
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/lib/pkgconfig/rdkafka-static.pc
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/lib/librdkafka.a
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/include/librdkafka/rdkafka.h
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/include/librdkafka/rdkafka_mock.h
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/lib/pkgconfig/rdkafka++-static.pc
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/lib/librdkafka++.a
+/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/include/librdkafka/rdkafkacpp.h

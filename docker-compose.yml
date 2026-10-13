@@ -1,0 +1,221 @@
+# Local infrastructure and services for CodeArena.
+#
+#   docker compose up -d --wait          PostgreSQL + Redis + Kafka + API + worker + web
+#   docker compose up -d --wait postgres just the database (for `cargo test`)
+#
+# Two worker variants are provided, and they differ in where untrusted code
+# runs. Read docs/SECURITY.md before choosing.
+#
+#   worker         (default)  RUNNER_STRATEGY=local inside a hardened container:
+#                             no capabilities, read-only root, tmpfs sandbox,
+#                             bounded pids/memory, and NO Docker socket anywhere.
+#   worker-docker  (profile)  RUNNER_STRATEGY=docker: one throw-away container
+#                             per execution, which isolates runs from each other
+#                             — but requires the Docker socket, so a compromised
+#                             worker becomes host root. Opt in deliberately:
+#                             docker compose --profile docker-runner up -d
+name: codearena
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: codearena-postgres
+    environment:
+      POSTGRES_USER: codearena
+      POSTGRES_PASSWORD: codearena
+      POSTGRES_DB: codearena
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codearena -d codearena"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: codearena-redis
+    # Caching and rate limiting only: nothing here is authoritative, so there
+    # is no persistence and losing it costs a few cache misses.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Single-node Kafka in KRaft mode: no ZooKeeper, and enough for local work.
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: codearena-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092
+      # In-cluster clients use kafka:9092; the host uses localhost:29092.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # One node, so one replica is all that can be in sync.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # The API creates the topics it needs on first publish.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      CLUSTER_ID: codearena-local-cluster
+    ports:
+      - "29092:29092"
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: docker/api.Dockerfile
+    container_name: codearena-api
+    environment:
+      DATABASE_URL: postgres://codearena:codearena@postgres:5432/codearena
+      # Change this. Generate one with: openssl rand -hex 32
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-me-32}
+      BIND_ADDR: 0.0.0.0:8080
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      REDIS_URL: redis://redis:6379
+      QUEUE_DRIVER: kafka
+      KAFKA_BROKERS: kafka:9092
+      # The API never executes anything; this makes that explicit.
+      RUNNER_STRATEGY: disabled
+      LOG_FORMAT_JSON: "true"
+      RUST_LOG: codearena_api=info,tower_http=info,sqlx=warn
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/codearena-healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
+
+  # Default worker: untrusted code runs as uid 65534 inside this container,
+  # bounded by POSIX rlimits (see src/runner/local.rs) *and* by the container
+  # restrictions below. No Docker socket is mounted anywhere.
+  worker:
+    build:
+      context: ./backend
+      dockerfile: docker/worker.Dockerfile
+    environment:
+      DATABASE_URL: postgres://codearena:codearena@postgres:5432/codearena
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-me-32}
+      REDIS_URL: redis://redis:6379
+      QUEUE_DRIVER: kafka
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_GROUP_ID: codearena-judge
+      RUNNER_STRATEGY: local
+      RUNNER_WORKDIR: /sandbox
+      WORKER_CONCURRENCY: "2"
+      RUNNER_CONCURRENCY: "2"
+      LOG_FORMAT_JSON: "true"
+      RUST_LOG: codearena_api=info,sqlx=warn
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      api: { condition: service_started }
+    # --- the container's own confinement -------------------------------------
+    user: "0:0"            # starts as root only so it can drop to 65534 per run
+    read_only: true        # the image is immutable at runtime
+    tmpfs:
+      # Sandboxes live here: writable, but no executables from it and no setuid.
+      # exec is required because compiled programs are run from this directory,
+      # so the other restrictions carry the weight.
+      - /sandbox:rw,exec,mode=1777,size=512m
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop: ["ALL"]
+    # The local runner drops each sandboxed process to uid/gid 65534 with
+    # setgroups/setgid/setuid, which needs exactly these two capabilities.
+    # Nothing else is added back; the sandboxed child loses them on setuid.
+    cap_add: ["SETUID", "SETGID"]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 512
+    mem_limit: 2g
+    restart: unless-stopped
+    # Scale with: docker compose up -d --scale worker=3
+    # Kafka distributes partitions across the consumer group automatically.
+
+  # Opt-in worker that isolates every execution in its own container.
+  # Requires the Docker socket: a compromise of THIS container is a compromise
+  # of the host. The sandbox containers themselves never see the socket.
+  worker-docker:
+    profiles: ["docker-runner"]
+    build:
+      context: ./backend
+      dockerfile: docker/worker.Dockerfile
+    environment:
+      DATABASE_URL: postgres://codearena:codearena@postgres:5432/codearena
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-me-32}
+      REDIS_URL: redis://redis:6379
+      QUEUE_DRIVER: kafka
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_GROUP_ID: codearena-judge
+      RUNNER_STRATEGY: docker
+      RUNNER_IMAGE: codearena-runner:cpp17
+      # Must be a path the *host* daemon can bind-mount, so it is a real
+      # directory shared with the host rather than a container-only tmpfs.
+      RUNNER_WORKDIR: /sandbox
+      WORKER_CONCURRENCY: "2"
+      LOG_FORMAT_JSON: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - sandbox:/sandbox
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      runner-image-builder: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  # Builds the sandbox image once, then exits. Only needed by worker-docker.
+  runner-image-builder:
+    profiles: ["docker-runner"]
+    build:
+      context: ./backend
+      dockerfile: docker/runner.Dockerfile
+    image: codearena-runner:cpp17
+    command: ["true"]
+    restart: "no"
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Same-origin in the container: nginx proxies /api to the API service.
+        VITE_API_BASE_URL: ""
+    container_name: codearena-web
+    ports:
+      - "5173:80"
+    depends_on:
+      api: { condition: service_started }
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  kafkadata:
+  sandbox:

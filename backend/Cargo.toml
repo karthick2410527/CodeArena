@@ -1,0 +1,66 @@
+[package]
+name = "codearena-api"
+version = "0.5.0"
+edition = "2021"
+rust-version = "1.82"
+
+[lib]
+name = "codearena_api"
+path = "src/lib.rs"
+
+[[bin]]
+name = "codearena-api"
+path = "src/main.rs"
+
+# The judge worker runs as a separate process so untrusted code never executes
+# inside the API process (see docs/SECURITY.md).
+[[bin]]
+name = "codearena-worker"
+path = "src/bin/worker.rs"
+
+# Operational helper: inspect / replay dead-lettered judge jobs.
+[[bin]]
+name = "codearena-dlq"
+path = "src/bin/dlq.rs"
+
+[features]
+default = ["kafka"]
+# Apache Kafka queue driver (builds librdkafka from source; needs cmake,
+# libssl-dev, libsasl2-dev, libcurl4-openssl-dev, zlib1g-dev).
+# Disable with --no-default-features to build with only the PostgreSQL driver.
+kafka = ["rdkafka"]
+
+[dependencies]
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "process", "time", "fs", "io-util", "sync"] }
+sqlx = { version = "0.7", default-features = false, features = ["runtime-tokio", "postgres", "uuid", "chrono", "migrate", "macros", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+argon2 = "0.5"
+jsonwebtoken = "9"
+rand = "0.8"
+sha2 = "0.10"
+hex = "0.4"
+dotenvy = "0.15"
+thiserror = "1"
+libc = "0.2"
+tempfile = "3"
+futures = "0.3"
+redis = { version = "0.25", default-features = false, features = ["tokio-comp", "script", "connection-manager"] }
+rdkafka = { version = "0.36", default-features = false, features = ["tokio", "cmake-build", "libz"], optional = true }
+
+[dev-dependencies]
+tower = { version = "0.4", features = ["util"] }
+http-body-util = "0.1"
+
+# Argon2 is intentionally slow; keep it fast enough in debug builds / tests.
+[profile.dev.package.argon2]
+opt-level = 3
+[profile.dev.package.blake2]
+opt-level = 3

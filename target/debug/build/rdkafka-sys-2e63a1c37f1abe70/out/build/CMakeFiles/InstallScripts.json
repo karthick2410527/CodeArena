@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/build/cmake_install.cmake",
+		"/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/build/src/cmake_install.cmake",
+		"/Users/karthick/Projects/FullStackProject/backend/target/debug/build/rdkafka-sys-2e63a1c37f1abe70/out/build/src-cpp/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

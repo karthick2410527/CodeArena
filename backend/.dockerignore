@@ -1,0 +1,6 @@
+# Never send build output or local config into the build context: it would
+# invalidate the layer cache on every build and could leak a real .env.
+target/
+.env
+*.log
+docker/
