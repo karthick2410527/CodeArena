@@ -1,0 +1,59 @@
+# Production overrides for one server:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Only Caddy is reachable from outside (ports 80 and 443, HTTPS). The database,
+# Redis, Kafka, the API and the web container stay on Docker's private network.
+# Every secret comes from .env; the stack refuses to start without them.
+services:
+  postgres:
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    restart: unless-stopped
+
+  redis:
+    ports: !reset []
+    restart: unless-stopped
+
+  kafka:
+    ports: !reset []
+    restart: unless-stopped
+
+  api:
+    ports: !reset []
+    environment:
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (openssl rand -hex 32)}
+      FRONTEND_URL: ${FRONTEND_URL:?set FRONTEND_URL in .env, e.g. https://voidrun.example.com}
+      HOST_PLAN_REQUIRED: ${HOST_PLAN_REQUIRED:-true}
+      # The test checkout grants plans for free; never on a live site.
+      TEST_PAYMENTS: "false"
+
+  worker:
+    environment:
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+
+  web:
+    ports: !reset []
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: voidrun-caddy
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env, e.g. voidrun.example.com}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  caddydata:
+  caddyconfig:

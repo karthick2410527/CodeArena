@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: voidrun-worker
+  main:
+    web-application-type: none
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/voidrun}
+    username: ${DATABASE_USER:voidrun}
+    password: ${DATABASE_PASSWORD:voidrun}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      # A recording takes up to the compile plus trace budget (under a
+      # minute); one record per poll keeps a rebalance from stranding a batch
+      # behind a slow one, and the poll interval leaves room for the slowest.
+      max-poll-records: 1
+      properties:
+        max.poll.interval.ms: 300000
+    listener:
+      # Commit only once the result is in PostgreSQL.
+      ack-mode: manual_immediate
+    producer:
+      # Used to move failed jobs to the retry and dead-letter topics.
+      acks: all
+      properties:
+        enable.idempotence: true
+
+voidrun:
+  worker:
+    id: ${WORKER_ID:}
+    topic-partitions: ${KAFKA_PARTITIONS:3}
+    topic-replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
+    replay:
+      image: ${RECORDER_IMAGE:voidrun-recorder:latest}
+      # Must be the same path for this process and the Docker daemon (see
+      # docker-compose.yml); empty uses the system temp directory.
+      work-dir: ${REPLAY_WORK_DIR:}
+      concurrency: ${REPLAY_CONCURRENCY:2}
+      max-steps: ${REPLAY_MAX_STEPS:2000}
+      max-time: ${REPLAY_MAX_TIME:20s}
+      attempts: 3
+      retry-delay-ms: 2000
+    judge:
+      image: ${RUNNER_IMAGE:voidrun-runner:latest}
+      work-dir: ${JUDGE_WORK_DIR:}
+      cache-dir: ${COMPILE_CACHE_DIR:}
+      cache-entries: ${COMPILE_CACHE_ENTRIES:500}
+      run-concurrency: ${RUN_CONCURRENCY:2}
+      submission-concurrency: ${SUBMISSION_CONCURRENCY:2}
+      contest-concurrency: ${CONTEST_CONCURRENCY:4}
+      attempts: 3
+      retry-delay-ms: 1000
+
+logging:
+  pattern:
+    correlation: "[%X{correlationId:-}] "

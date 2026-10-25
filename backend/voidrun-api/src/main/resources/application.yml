@@ -1,0 +1,104 @@
+spring:
+  application:
+    name: voidrun-api
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/voidrun}
+    username: ${DATABASE_USER:voidrun}
+    password: ${DATABASE_PASSWORD:voidrun}
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+      # The rate limiter fails open; a slow Redis must not slow sign-in down.
+      timeout: 250ms
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      # The outbox relay is the only producer. acks=all with idempotence means
+      # a retried send never duplicates or reorders within a partition.
+      acks: all
+      properties:
+        enable.idempotence: true
+        # Fail a send in seconds, not the client's default minute, so a Kafka
+        # outage backs the relay off instead of stalling it.
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  flyway:
+    # Problem statements in the seed contain "${...}"; migrations use no placeholders.
+    placeholder-replacement: false
+
+server:
+  port: ${PORT:8080}
+  # Behind the web client's proxy, OAuth redirect URIs must use the public host
+  # and rate limits must key on the real client. "native" (Tomcat's
+  # RemoteIpValve) honours X-Forwarded-* only from internal proxy addresses, so
+  # a client talking to the API directly cannot spoof its IP.
+  forward-headers-strategy: native
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+voidrun:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  jwt:
+    secret: ${JWT_SECRET:}
+    access-token-ttl: ${ACCESS_TOKEN_TTL:15m}
+    refresh-token-ttl: ${REFRESH_TOKEN_TTL:30d}
+  # A provider is enabled when both its id and secret are set.
+  oauth:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+    github:
+      client-id: ${GITHUB_CLIENT_ID:}
+      client-secret: ${GITHUB_CLIENT_SECRET:}
+  limits:
+    max-source-bytes: 65536
+    max-input-bytes: 65536
+    max-output-bytes: 65536
+  run-retention: 24h
+  outbox:
+    relay-enabled: ${OUTBOX_RELAY_ENABLED:true}
+    batch-size: 100
+    # Topics the API declares on start. One replica suits a single local broker.
+    partitions: ${KAFKA_PARTITIONS:3}
+    replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
+  replay:
+    retention: ${REPLAY_RETENTION:7d}
+  # Hosting a contest needs a Host plan. Without Razorpay keys, plans are sold
+  # through a built-in test checkout that moves no money (TEST_PAYMENTS, on by
+  # default; production turns it off). With keys, real Razorpay payments are
+  # used. HOST_PLAN_REQUIRED=false makes hosting free for everyone.
+  billing:
+    required: ${HOST_PLAN_REQUIRED:true}
+    test-payments: ${TEST_PAYMENTS:true}
+    razorpay:
+      key-id: ${RAZORPAY_KEY_ID:}
+      key-secret: ${RAZORPAY_KEY_SECRET:}
+      webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+    plans:
+      host-monthly:
+        name: Host Monthly
+        amount-paise: ${HOST_MONTHLY_PAISE:49900}
+        days: 30
+      host-yearly:
+        name: Host Yearly
+        amount-paise: ${HOST_YEARLY_PAISE:499900}
+        days: 365
+  rate-limits:
+    billing: ${RATE_LIMIT_BILLING:20/3600}
+    import: ${RATE_LIMIT_IMPORT:30/3600}
+    login: ${RATE_LIMIT_LOGIN:10/60}
+    register: ${RATE_LIMIT_REGISTER:5/3600}
+    run: ${RATE_LIMIT_RUN:30/60}
+    submit: ${RATE_LIMIT_SUBMIT:10/60}
+    replay: ${RATE_LIMIT_REPLAY:10/60}
+    contest: ${RATE_LIMIT_CONTEST:20/3600}

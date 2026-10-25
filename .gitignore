@@ -1,0 +1,21 @@
+# Local settings and secrets (see .env.example). Only .env.example is committed.
+.env
+.env.*
+!.env.example
+
+# Build output
+backend/**/target/
+frontend/dist/
+frontend/node_modules/
+*.tsbuildinfo
+coverage/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
+~$*
+
+# Local scratch
+*.log

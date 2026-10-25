@@ -1,0 +1,157 @@
+# Local infrastructure and services for VoidRun.
+#
+#   make up                                      everything, including the recorder sandbox image
+#   docker compose up -d --wait postgres redis   just what the API needs
+#
+# The worker judges runs and submissions and records "Debug" replays. It
+# starts a sandbox container per job, so the two sandbox images must exist
+# first (`make runner-image recorder-image`; `make up` builds them).
+name: voidrun
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: voidrun-postgres
+    environment:
+      POSTGRES_USER: voidrun
+      POSTGRES_PASSWORD: voidrun
+      POSTGRES_DB: voidrun
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voidrun -d voidrun"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: voidrun-redis
+    # Rate limiting only: nothing here is authoritative, so there is no
+    # persistence, and the limiter fails open if Redis is gone.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Single-node Kafka in KRaft mode: no ZooKeeper, and enough for local work.
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: voidrun-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092
+      # In-cluster clients use kafka:9092; the host uses localhost:29092.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # One node, so one replica is all that can be in sync.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      CLUSTER_ID: voidrun-local-cluster
+    ports:
+      - "29092:29092"
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: docker/api.Dockerfile
+    container_name: voidrun-api
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/voidrun
+      DATABASE_USER: voidrun
+      DATABASE_PASSWORD: voidrun
+      REDIS_URL: redis://redis:6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Change this. Generate one with: openssl rand -hex 32
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-me-32}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      # Host plans. Without Razorpay keys they're paid with a built-in test
+      # checkout (no real money); add keys for real payments.
+      TEST_PAYMENTS: ${TEST_PAYMENTS:-true}
+      HOST_PLAN_REQUIRED: ${HOST_PLAN_REQUIRED:-true}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: docker/worker.Dockerfile
+    container_name: voidrun-worker
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/voidrun
+      DATABASE_USER: voidrun
+      DATABASE_PASSWORD: voidrun
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      RUNNER_IMAGE: voidrun-runner:latest
+      RECORDER_IMAGE: voidrun-recorder:latest
+      JUDGE_WORK_DIR: /tmp/voidrun-work/judge
+      REPLAY_WORK_DIR: /tmp/voidrun-work/replays
+      COMPILE_CACHE_DIR: /var/cache/voidrun/compiled
+    volumes:
+      # Sandboxes are siblings started through the host's daemon (see
+      # docker/worker.Dockerfile for what that implies).
+      - /var/run/docker.sock:/var/run/docker.sock
+      # The daemon resolves a sandbox's `-v <dir>:/work` on the host, so the
+      # work directory must be the same path inside the worker and outside.
+      - /tmp/voidrun-work:/tmp/voidrun-work
+      # Compiled programs, kept across restarts.
+      - compilecache:/var/cache/voidrun
+    depends_on:
+      kafka: { condition: service_healthy }
+      # The API applies the database migrations on start.
+      api: { condition: service_healthy }
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Same-origin in the container: nginx proxies /api and the OAuth
+        # redirect paths to the API service.
+        VITE_API_BASE_URL: ""
+    container_name: voidrun-web
+    ports:
+      - "5173:80"
+    depends_on:
+      api: { condition: service_started }
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  kafkadata:
+  compilecache:

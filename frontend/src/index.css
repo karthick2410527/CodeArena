@@ -1,0 +1,341 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme system: Light (default), Sand and Emerald, Dark and Midnight. Each theme sets
+   RGB channels (--c-*) so Tailwind opacity modifiers work; the plain colour
+   tokens (--accent, --ink, …) are derived from them for inline styles, SVG
+   and the editor theme. Text colours keep at least 4.5:1 against the page in
+   every theme. */
+:root {
+  --c-paper: 246 245 241;   /* page background */
+  --c-surface: 253 253 251; /* panel / card */
+  --c-field: 253 253 251;   /* input surface */
+  --c-sunken: 238 237 230;  /* hover / selected surface */
+  --c-line: 221 220 211;    /* borders, dividers */
+  --c-line-strong: 199 198 187;
+  --c-faint: 78 84 94;      /* faintest text and icons */
+  --c-muted: 60 66 76;      /* secondary copy, labels */
+  --c-ink: 21 23 28;        /* primary text */
+  --c-accent: 58 43 234;    /* electric indigo */
+  --c-accent-hover: 36 23 201;
+  --c-accent-ink: 255 255 255;
+  --c-good: 46 125 79;
+  --c-warn: 154 106 0;
+  --c-bad: 179 38 30;
+  --grid-line: 21 23 28;
+  --panel-shine: 0.03;
+  --panel-shadow-1: 0.06;
+  --panel-shadow-2: 0.18;
+  color-scheme: light;
+}
+
+/* Sand: warm paper with a burnt-orange accent. */
+:root[data-theme='sand'] {
+  --c-paper: 244 239 229;
+  --c-surface: 251 248 242;
+  --c-field: 252 250 246;
+  --c-sunken: 236 229 215;
+  --c-line: 222 212 194;
+  --c-line-strong: 197 186 166;
+  --c-faint: 92 84 72;
+  --c-muted: 72 66 57;
+  --c-ink: 33 29 24;
+  --c-accent: 186 64 14;
+  --c-accent-hover: 156 50 8;
+  --c-accent-ink: 255 255 255;
+  --c-good: 31 118 62;
+  --c-warn: 146 92 6;
+  --c-bad: 178 32 28;
+  --grid-line: 33 29 24;
+  --panel-shine: 0.3;
+  --panel-shadow-1: 0.05;
+  --panel-shadow-2: 0.12;
+  color-scheme: light;
+}
+
+/* Dark: graphite, with the indigo lifted so it reads on a dark surface. */
+:root[data-theme='dark'] {
+  --c-paper: 13 14 18;
+  --c-surface: 22 24 30;
+  --c-field: 26 28 35;
+  --c-sunken: 33 36 44;
+  --c-line: 45 49 59;
+  --c-line-strong: 66 72 85;
+  --c-faint: 142 149 163;
+  --c-muted: 170 177 191;
+  --c-ink: 236 238 243;
+  --c-accent: 133 124 255;
+  --c-accent-hover: 112 101 246;
+  --c-accent-ink: 255 255 255;
+  --c-good: 80 200 132;
+  --c-warn: 232 180 64;
+  --c-bad: 248 113 113;
+  --grid-line: 255 255 255;
+  --panel-shine: 0.04;
+  --panel-shadow-1: 0.35;
+  --panel-shadow-2: 0.55;
+  color-scheme: dark;
+}
+
+/* Midnight: deep navy with a sky-blue accent (dark text on the accent). */
+:root[data-theme='midnight'] {
+  --c-paper: 7 12 25;
+  --c-surface: 12 20 38;
+  --c-field: 15 25 46;
+  --c-sunken: 21 33 58;
+  --c-line: 32 47 78;
+  --c-line-strong: 50 68 106;
+  --c-faint: 136 152 184;
+  --c-muted: 166 180 208;
+  --c-ink: 229 237 250;
+  --c-accent: 56 189 248;
+  --c-accent-hover: 14 165 233;
+  --c-accent-ink: 6 18 38;
+  --c-good: 52 211 153;
+  --c-warn: 251 191 36;
+  --c-bad: 251 113 133;
+  --grid-line: 255 255 255;
+  --panel-shine: 0.05;
+  --panel-shadow-1: 0.4;
+  --panel-shadow-2: 0.6;
+  color-scheme: dark;
+}
+
+/* Emerald: light mint paper with a deep green accent. */
+:root[data-theme='emerald'] {
+  --c-paper: 239 247 241;
+  --c-surface: 252 254 252;
+  --c-field: 252 254 252;
+  --c-sunken: 225 240 230;
+  --c-line: 204 226 211;
+  --c-line-strong: 176 205 186;
+  --c-faint: 68 92 79;
+  --c-muted: 50 74 61;
+  --c-ink: 13 32 22;
+  --c-accent: 21 128 61;
+  --c-accent-hover: 22 101 52;
+  --c-accent-ink: 255 255 255;
+  --c-good: 4 120 87;
+  --c-warn: 154 106 0;
+  --c-bad: 179 38 30;
+  --grid-line: 13 32 22;
+  --panel-shine: 0.3;
+  --panel-shadow-1: 0.06;
+  --panel-shadow-2: 0.15;
+  color-scheme: light;
+}
+
+:root {
+  --paper: rgb(var(--c-paper));
+  --surface: rgb(var(--c-surface));
+  --sunken: rgb(var(--c-sunken));
+  --line: rgb(var(--c-line));
+  --muted: rgb(var(--c-muted));
+  --ink: rgb(var(--c-ink));
+  --accent: rgb(var(--c-accent));
+  --good: rgb(var(--c-good));
+  --bad: rgb(var(--c-bad));
+}
+
+* { border-color: rgb(var(--c-line)); }
+
+/* Always reserve the scrollbar's width, so the page never shifts sideways
+   when a section changes height and the scrollbar comes or goes. */
+html { scrollbar-gutter: stable; }
+
+body {
+  background-color: rgb(var(--c-paper));
+  background-image:
+    radial-gradient(1100px 520px at 50% -180px, rgb(var(--c-accent) / 0.10), transparent 70%),
+    radial-gradient(700px 400px at 100% 0%, rgb(var(--c-accent) / 0.05), transparent 70%);
+  background-repeat: no-repeat;
+  color: rgb(var(--c-ink));
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+h1, h2, h3 { font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif; letter-spacing: -0.015em; text-wrap: balance; }
+h1 { letter-spacing: -0.035em; }
+
+*:focus-visible { outline: 2px solid rgb(var(--c-accent)); outline-offset: 2px; border-radius: 4px; }
+
+::selection { background: rgb(var(--c-accent) / 0.28); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(var(--c-line-strong)); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-faint)); }
+
+@layer components {
+  /* Surface card: soft border, generous radius, layered shadow. */
+  .panel { @apply relative rounded-2xl border border-line/80 bg-surface shadow-panel; }
+  .card { @apply panel; }
+
+  .btn {
+    @apply relative inline-flex min-h-[40px] select-none items-center justify-center gap-2 rounded-xl px-4 text-sm font-medium duration-150 disabled:pointer-events-none disabled:opacity-40;
+    /* Colours only: animating size or position makes neighbours jump when a label changes. */
+    transition-property: color, background-color, border-color, box-shadow, filter;
+  }
+  .btn-primary {
+    @apply btn text-accent-ink;
+    background: linear-gradient(180deg, rgb(var(--c-accent)) 0%, rgb(var(--c-accent-hover)) 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(0 0 0 / 0.18), 0 10px 28px -10px rgb(var(--c-accent) / 0.75);
+  }
+  .btn-primary:hover { filter: brightness(1.07); }
+  /* Bordered secondary action. */
+  .btn-outline { @apply btn border border-line bg-surface/70 text-ink shadow-sm backdrop-blur hover:border-line-strong hover:bg-sunken; }
+  /* Borderless tertiary action. */
+  .btn-ghost { @apply btn bg-transparent text-muted hover:bg-sunken hover:text-ink; }
+  .btn-danger { @apply btn border border-bad/40 bg-transparent text-bad hover:bg-bad/10; }
+
+  .input {
+    @apply min-h-[40px] w-full rounded-xl border border-line bg-field px-3.5 py-2 text-sm text-ink shadow-sm transition placeholder:text-faint focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/15;
+  }
+  select.input {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 2.75rem;
+    background-image: var(--chevron);
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 14px 14px;
+    cursor: pointer;
+  }
+
+  .label { @apply mb-1.5 block text-sm font-medium text-ink; }
+  .chip { @apply inline-flex items-center gap-1 rounded-full border border-line bg-paper/70 px-2.5 py-0.5 text-xs font-medium text-muted; }
+
+  /* Section kicker above a heading. */
+  .eyebrow { @apply text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-accent; }
+
+  /* Announcement pill (hero). */
+  .badge { @apply inline-flex items-center gap-2 rounded-full border border-line bg-surface/80 px-3 py-1 text-[0.8125rem] font-medium text-muted shadow-sm backdrop-blur; }
+  .badge-dot { @apply h-1.5 w-1.5 rounded-full bg-accent; box-shadow: 0 0 0 3px rgb(var(--c-accent) / 0.18); }
+
+  .text-shine { background: linear-gradient(180deg, rgb(var(--c-ink)) 30%, rgb(var(--c-muted)) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .text-accent-shine { background: linear-gradient(90deg, rgb(var(--c-accent)) 0%, rgb(var(--c-accent-hover)) 50%, rgb(var(--c-accent)) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* Faint grid that fades out, only behind the hero. */
+  .hero-grid {
+    background-image:
+      linear-gradient(rgb(var(--grid-line) / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--grid-line) / 0.06) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+  }
+  .glow { background: radial-gradient(closest-side, rgb(var(--c-accent) / 0.35), transparent); filter: blur(30px); }
+
+  /* Product mock frame: browser-like chrome around a live-looking card. */
+  .mock { @apply overflow-hidden rounded-2xl border border-line bg-surface; box-shadow: 0 1px 0 rgb(255 255 255 / var(--panel-shine)) inset, 0 30px 80px -30px rgb(0 0 0 / calc(var(--panel-shadow-2) + 0.2)), 0 0 0 6px rgb(var(--c-line) / 0.35); }
+  .mock-bar { @apply flex items-center gap-1.5 border-b border-line bg-paper/60 px-4 py-2.5; }
+  .mock-bar i { @apply h-2.5 w-2.5 rounded-full bg-line-strong; }
+
+  .bento { @apply relative overflow-hidden rounded-2xl border border-line/80 bg-surface p-6 shadow-panel; }
+  .icon-tile { @apply grid h-10 w-10 place-items-center rounded-xl border border-accent/25 bg-accent/10 text-accent; }
+
+  /* Spec-sheet header and footer strips on a panel. */
+  .panel-meta { @apply flex items-center justify-between gap-3 border-b border-line/70 bg-paper/40 px-5 py-3 font-mono text-[0.6875rem] uppercase tracking-[0.06em] text-faint; }
+
+  .progress-track { @apply h-1.5 overflow-hidden rounded-full bg-line/70; }
+  .progress-fill { @apply h-full rounded-full; background: linear-gradient(90deg, rgb(var(--c-accent) / 0.7), rgb(var(--c-accent))); transition: width 0.3s ease; }
+
+  /* Data tables: recessive header, row hover, generous rows. */
+  .data-table { @apply w-full text-sm; }
+  .data-table thead th { @apply whitespace-nowrap border-b border-line bg-paper/50 px-4 py-2.5 text-left text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-faint; }
+  .data-table tbody tr { @apply border-b border-line/60 transition-colors last:border-0; }
+  .data-table tbody tr:hover { background-color: rgb(var(--c-sunken) / 0.45); }
+  .data-table td { @apply px-4 py-3 align-middle; }
+
+  /* Segmented control: a row of mutually exclusive filters. */
+  .segmented { @apply inline-flex flex-wrap gap-0.5 rounded-xl border border-line bg-paper/60 p-0.5; }
+  .segmented > button { @apply rounded-[10px] px-3 py-1.5 text-xs font-medium text-muted transition hover:text-ink; }
+  .segmented > button[aria-pressed='true'] { @apply bg-surface text-ink shadow-panel; }
+
+  /* A card that is a link: it lights its border and casts a soft accent glow on hover (no movement). */
+  .card-hover { @apply transition-[border-color,box-shadow] duration-200 hover:border-accent/40; }
+  .card-hover:hover { box-shadow: 0 1px 0 rgb(255 255 255 / var(--panel-shine)) inset, 0 18px 50px -24px rgb(var(--c-accent) / 0.45); }
+
+  /* A large radio card (wizard choices). */
+  .choice-card { @apply block cursor-pointer rounded-2xl border border-line bg-paper/40 p-4 transition-[border-color,background-color,box-shadow] duration-200 hover:border-line-strong; }
+  .choice-card:focus-within { @apply ring-4 ring-accent/15; }
+  .choice-card-on { @apply border-accent/60 bg-accent/[0.06]; box-shadow: 0 0 0 1px rgb(var(--c-accent) / 0.35); }
+  .pill-choice { @apply min-h-[38px] rounded-full border border-line bg-paper/40 px-4 text-sm font-medium text-muted transition-colors hover:border-line-strong hover:text-ink; }
+  .pill-choice-on { @apply border-accent bg-accent text-accent-ink hover:border-accent hover:text-accent-ink; }
+
+  /* Top bar links. */
+  .topnav-link { @apply relative z-10 inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium text-muted transition-colors hover:text-ink; }
+  .topnav-link[aria-current='page'] { @apply text-ink; }
+
+  /* Rendering of Markdown problem statements. */
+  .md { @apply text-[15px] leading-7 text-ink; }
+  .md p { @apply my-3; }
+  .md h3 { @apply mb-2 mt-6 font-display text-base font-semibold text-ink; }
+  .md ul { @apply my-3 list-disc space-y-1 pl-6 marker:text-line-strong; }
+  .md ol { @apply my-3 list-decimal space-y-1 pl-6; }
+  .md code { @apply rounded border border-line bg-paper px-1.5 py-0.5 font-mono text-[13px] text-accent; }
+  .md pre { @apply my-3 overflow-x-auto rounded-xl border border-line bg-paper p-3; }
+  .md pre code { @apply border-0 bg-transparent p-0 text-ink; }
+  .md strong { @apply font-semibold text-ink; }
+  .md a { @apply text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent; }
+}
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Dropdown chevron colour per theme. */
+:root { --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233C424C' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+:root[data-theme='dark'], :root[data-theme='midnight'] { --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23AAB1BF' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+
+/* ---- Motion -------------------------------------------------------------------
+   Everything here animates opacity and transform only, which never moves the
+   layout around it, and it all switches off for people who ask for less motion. */
+
+@keyframes vr-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes vr-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes vr-reveal { from { opacity: 0; transform: translateY(32px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes vr-drift { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(4%, -6%, 0) scale(1.08); } }
+@keyframes vr-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes vr-pop { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* Each page eases in when you arrive on it. */
+.animate-page { animation: vr-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-step { animation: vr-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-pop { animation: vr-pop 160ms ease-out both; transform-origin: top; }
+/* Staggered entrance for the children of a hero. */
+.stagger > * { animation: vr-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.stagger > *:nth-child(2) { animation-delay: 80ms; }
+.stagger > *:nth-child(3) { animation-delay: 160ms; }
+.stagger > *:nth-child(4) { animation-delay: 240ms; }
+.stagger > *:nth-child(5) { animation-delay: 320ms; }
+.stagger > *:nth-child(6) { animation-delay: 400ms; }
+
+/* Sections rise into place as they scroll into view, driven by the scroll
+   position itself (no script). Browsers without scroll timelines show them as is. */
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: vr-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}
+
+/* Slow-moving colour behind heroes. */
+.aurora { position: absolute; inset: -20% -10% auto; height: 640px; pointer-events: none; filter: blur(70px); opacity: 0.55; }
+.aurora > span { position: absolute; border-radius: 999px; animation: vr-drift 18s ease-in-out infinite; }
+.aurora > span:nth-child(1) { left: 10%; top: 0; width: 46%; height: 70%; background: rgb(var(--c-accent) / 0.45); }
+.aurora > span:nth-child(2) { right: 8%; top: 12%; width: 38%; height: 60%; background: rgb(var(--c-good) / 0.28); animation-delay: -6s; animation-duration: 22s; }
+.aurora > span:nth-child(3) { left: 38%; top: 30%; width: 30%; height: 50%; background: rgb(var(--c-accent-hover) / 0.35); animation-delay: -11s; animation-duration: 26s; }
+
+/* An endless strip of logos or words. */
+.marquee { -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); overflow: hidden; }
+.marquee > div { display: flex; width: max-content; animation: vr-marquee 38s linear infinite; }
+.marquee:hover > div { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-page, .animate-step, .animate-pop, .stagger > *, .reveal, .aurora > span, .marquee > div { animation: none !important; }
+  html { scroll-behavior: auto; }
+}
