@@ -27,6 +27,7 @@ import { contestsApi } from "../api/endpoints";
 import { useHosting } from "./hosting";
 import { useAuth, useViewer } from "../auth/AuthContext";
 import { THEMES, useDisplay, type ThemeName } from "../display";
+import ErrorBoundary from "./ErrorBoundary";
 import LiveContestBanner from "./LiveContestBanner";
 import { Avatar } from "./people";
 import SearchPalette, { useSearchShortcut } from "./SearchPalette";
@@ -181,13 +182,17 @@ export default function Layout() {
       {pathname === "/" ? (
         // The landing page runs edge to edge and lays out its own sections.
         <main id="main" className="-mt-16 flex-1">
-          <Outlet />
+          <ErrorBoundary key={pageKey}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       ) : (
         <main id="main" className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-20 pt-6 sm:px-8 sm:pt-8">
           <LiveContestBanner />
           <div key={pageKey} className="animate-page">
-            <Outlet />
+            <ErrorBoundary key={pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       )}
@@ -341,7 +346,7 @@ const SWATCH: Record<ThemeName, [string, string, string]> = {
   sand: ["#f4efe5", "#fbf8f2", "#ba400e"],
   dark: ["#0d0e12", "#16181e", "#857cff"],
   midnight: ["#070c19", "#0c1426", "#38bdf8"],
-  emerald: ["#eff7f1", "#fcfefc", "#15803d"],
+  emerald: ["#f6f6f3", "#fdfdfc", "#16804a"],
 };
 
 function ThemeMenu() {

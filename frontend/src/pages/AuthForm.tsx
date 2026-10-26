@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { authApi } from "../api/endpoints";
@@ -138,5 +138,71 @@ export function FormError({ message }: { message: string | null }) {
     <div role="alert" className="rounded-xl border border-bad/30 border-l-[3px] border-l-bad bg-bad/5 px-3.5 py-2.5 text-sm text-bad">
       {message}
     </div>
+  );
+}
+
+/** Whether this server can email sign-in codes; false until known, so nothing flashes in. */
+export function useEmailSignIn(): boolean {
+  const { data } = useQuery({ queryKey: ["auth-email"], queryFn: authApi.emailSignIn, staleTime: 5 * 60_000 });
+  return data?.enabled ?? false;
+}
+
+/** Seconds left before another code may be asked for; `start()` begins the wait. */
+export function useCooldown(seconds = 60) {
+  const [until, setUntil] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (until <= now) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [until, now]);
+  return {
+    left: Math.max(0, Math.ceil((until - now) / 1000)),
+    start: () => {
+      const t = Date.now();
+      setNow(t);
+      setUntil(t + seconds * 1000);
+    },
+  };
+}
+
+/** The six-digit code box: digits only, filled from the SMS/mail suggestion where the browser offers one. */
+export function CodeField({ value, onChange, onComplete }: { value: string; onChange: (v: string) => void; onComplete?: (v: string) => void }) {
+  return (
+    <div>
+      <label htmlFor="code" className="label">
+        6-digit code
+      </label>
+      <input
+        id="code"
+        className="input text-center font-mono text-2xl tracking-[0.5em]"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        pattern="[0-9]*"
+        maxLength={6}
+        placeholder="••••••"
+        autoFocus
+        value={value}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
+          onChange(digits);
+          if (digits.length === 6) onComplete?.(digits);
+        }}
+      />
+    </div>
+  );
+}
+
+/** On a local server mail never leaves the machine; say where it went. */
+export function LocalMailHint() {
+  if (typeof window === "undefined" || !["localhost", "127.0.0.1"].includes(window.location.hostname)) return null;
+  return (
+    <p className="rounded-xl border border-dashed border-line-strong bg-paper/60 px-3 py-2 text-xs text-muted">
+      Running locally: the email lands in Mailpit at{" "}
+      <a href="http://localhost:8025" target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
+        localhost:8025
+      </a>
+      .
+    </p>
   );
 }

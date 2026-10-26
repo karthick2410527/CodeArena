@@ -1,27 +1,9 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { BadgeCheck, Compass, FileCode2, Medal, Swords, type LucideIcon } from "lucide-react";
+import { BadgeCheck, FileCode2, Swords, type LucideIcon } from "lucide-react";
 import { useViewer } from "../auth/AuthContext";
 
-/**
- * The competing pages (browse, joined) and the hosting pages (contests,
- * problems, plan) each share a tab row, and a hero band with the page's
- * headline figures.
- */
-export function HubTabs() {
-  const { signedIn } = useViewer();
-  if (!signedIn) return null;
-  return (
-    <TabRow
-      label="Contest pages"
-      tabs={[
-        ["/contests", "Browse", Compass],
-        ["/contests/joined", "Joined", Medal],
-      ]}
-    />
-  );
-}
-
+/** The hosting pages (contests, problems, plan) share a tab row. */
 export function HostTabs() {
   const { signedIn } = useViewer();
   if (!signedIn) return null;
@@ -68,6 +50,7 @@ export function HubHero({
   actions,
   stats,
   aside,
+  asideClassName = "lg:w-[22rem]",
 }: {
   eyebrow: string;
   title: ReactNode;
@@ -75,6 +58,8 @@ export function HubHero({
   actions?: ReactNode;
   stats?: HeroStat[];
   aside?: ReactNode;
+  /** The side column's width on large screens. */
+  asideClassName?: string;
 }) {
   return (
     <section className="relative mb-10 overflow-hidden rounded-[1.75rem] border border-line/70 bg-surface shadow-panel">
@@ -92,7 +77,7 @@ export function HubHero({
           <p className="mt-3 max-w-xl text-[0.9375rem] leading-relaxed text-muted sm:text-base">{description}</p>
           {actions && <div className="mt-6 flex flex-wrap items-center gap-2.5">{actions}</div>}
         </div>
-        {aside && <div className="animate-step lg:w-[22rem]">{aside}</div>}
+        {aside && <div className={`animate-step min-w-0 ${asideClassName}`}>{aside}</div>}
       </div>
 
       {stats && stats.length > 0 && (

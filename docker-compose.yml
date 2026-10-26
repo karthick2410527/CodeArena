@@ -98,12 +98,29 @@ services:
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      # Email sign-in codes and password resets. Locally they go to Mailpit:
+      # read them at http://localhost:8025. Set MAIL_* in .env to send real mail.
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-VoidRun <no-reply@voidrun.local>}
     ports:
       - "8080:8080"
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       kafka: { condition: service_healthy }
+    restart: unless-stopped
+
+  # A local inbox: catches every email the API sends, nothing leaves the machine.
+  mailpit:
+    image: axllent/mailpit:v1.21.0
+    container_name: voidrun-mailpit
+    ports:
+      - "8025:8025"
     restart: unless-stopped
 
   worker:

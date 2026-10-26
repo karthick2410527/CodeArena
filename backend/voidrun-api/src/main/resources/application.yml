@@ -28,6 +28,19 @@ spring:
         delivery.timeout.ms: 10000
   jackson:
     property-naming-strategy: SNAKE_CASE
+  # Email sign-in codes and password resets go out through this SMTP server.
+  # Without MAIL_HOST no mail is sent; see voidrun.mail.log-codes.
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_STARTTLS:true}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
   flyway:
     # Problem statements in the seed contain "${...}"; migrations use no placeholders.
     placeholder-replacement: false
@@ -93,7 +106,11 @@ voidrun:
         name: Host Yearly
         amount-paise: ${HOST_YEARLY_PAISE:499900}
         days: 365
+  mail:
+    from: ${MAIL_FROM:VoidRun <no-reply@voidrun.local>}
+    log-codes: ${MAIL_LOG_CODES:true}
   rate-limits:
+    email-code: ${RATE_LIMIT_EMAIL_CODE:5/600}
     billing: ${RATE_LIMIT_BILLING:20/3600}
     import: ${RATE_LIMIT_IMPORT:30/3600}
     login: ${RATE_LIMIT_LOGIN:10/60}

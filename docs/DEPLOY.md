@@ -153,6 +153,23 @@ URL's origin. A payment confirmed both ways extends the plan only once.
 
 ---
 
+## 2b. Email sign-in codes and "Forgot password"
+
+On the sign-in page, **Email me a code** signs in with a six-digit code, and
+**Forgot password?** sets a new password the same way. A code works once, for
+ten minutes, and is burned after five wrong guesses; asking for one never
+reveals whether an account has that address.
+
+- **Locally** nothing is needed: `make up` starts **Mailpit**, which catches every
+  email. Open <http://localhost:8025> to read the codes.
+- **Real mail**: set an SMTP server in `.env` (`MAIL_HOST`, `MAIL_PORT`,
+  `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, and `MAIL_SMTP_AUTH=true`,
+  `MAIL_STARTTLS=true`), then `make up`. Gmail: an app password from
+  <https://myaccount.google.com/apppasswords>, host `smtp.gmail.com`, port 587.
+- **Running the API outside Docker** (`make api`) without `MAIL_HOST`, codes are
+  written to the API log instead. Production never does that: without SMTP the
+  email options are hidden.
+
 ## 3. Putting VoidRun live
 
 On Microsoft Azure? Follow [DEPLOY-AZURE.md](DEPLOY-AZURE.md): the same setup,

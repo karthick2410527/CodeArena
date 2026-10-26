@@ -25,6 +25,10 @@ interface AuthContextValue {
   status: Status;
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
+  /** Signs in with a six-digit code sent by email. */
+  loginWithCode: (email: string, code: string) => Promise<void>;
+  /** Sets a new password with an emailed reset code, and signs in. */
+  resetPassword: (email: string, code: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string, displayName?: string) => Promise<void>;
   /** Finishes a Google or GitHub sign-in with the one-time code from /auth/callback. */
   completeOAuth: (code: string) => Promise<void>;
@@ -79,6 +83,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("authenticated");
   }, []);
 
+  const loginWithCode = useCallback(async (email: string, code: string) => {
+    const auth = await authApi.codeLogin({ email, code });
+    storeSession(auth);
+    setUser(auth.user);
+    setStatus("authenticated");
+  }, []);
+
+  const resetPassword = useCallback(async (email: string, code: string, password: string) => {
+    const auth = await authApi.resetPassword({ email, code, password });
+    storeSession(auth);
+    setUser(auth.user);
+    setStatus("authenticated");
+  }, []);
+
   const register = useCallback(async (username: string, email: string, password: string, displayName?: string) => {
     const auth = await authApi.register({ username, email, password, display_name: displayName });
     storeSession(auth);
@@ -126,8 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [status, viewer, queryClient]);
 
   const value = useMemo(
-    () => ({ status, user, login, register, completeOAuth, refreshUser, logout }),
-    [status, user, login, register, completeOAuth, refreshUser, logout],
+    () => ({ status, user, login, loginWithCode, resetPassword, register, completeOAuth, refreshUser, logout }),
+    [status, user, login, loginWithCode, resetPassword, register, completeOAuth, refreshUser, logout],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

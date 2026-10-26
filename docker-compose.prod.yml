@@ -29,6 +29,15 @@ services:
       HOST_PLAN_REQUIRED: ${HOST_PLAN_REQUIRED:-true}
       # The test checkout grants plans for free; never on a live site.
       TEST_PAYMENTS: "false"
+      # Real mail only: no Mailpit, and never codes in the log.
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-true}
+      MAIL_LOG_CODES: "false"
+
+  mailpit:
+    profiles: ["never"]
 
   worker:
     environment:

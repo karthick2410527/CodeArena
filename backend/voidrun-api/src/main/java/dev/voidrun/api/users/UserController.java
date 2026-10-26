@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.JsonNode;
 
 @RestController
 @RequestMapping("/api/v1/users/me")
@@ -43,17 +45,31 @@ public class UserController {
                 .orElseThrow(() -> ApiException.unauthorized("account no longer exists"));
     }
 
-    /** A blank name clears it, so the username is shown instead. */
-    public record ProfileInput(String displayName) {}
-
+    /**
+     * Changes the name, the username, or both: only the fields present are
+     * touched. A blank name clears it, so the username is shown instead. A new
+     * username must be free (ignoring case); old profile links stop working.
+     */
     @PatchMapping
-    UserDto update(@AuthenticationPrincipal Jwt jwt, @RequestBody ProfileInput in) {
-        if (in == null) {
-            throw ApiException.badRequest("display_name is required");
+    UserDto update(@AuthenticationPrincipal Jwt jwt, @RequestBody JsonNode in) {
+        if (in == null || !in.isObject() || (!in.has("display_name") && !in.has("username"))) {
+            throw ApiException.badRequest("send display_name, username or both");
         }
-        jdbc.sql("UPDATE users SET display_name = ? WHERE id = ?")
-                .params(AccountRules.displayName(in.displayName()), CurrentUser.id(jwt))
-                .update();
+        UUID id = CurrentUser.id(jwt);
+        if (in.has("display_name")) {
+            JsonNode n = in.get("display_name");
+            jdbc.sql("UPDATE users SET display_name = ? WHERE id = ?")
+                    .params(AccountRules.displayName(n.isNull() ? null : n.asString()), id)
+                    .update();
+        }
+        if (in.has("username")) {
+            String username = AccountRules.username(in.get("username").isNull() ? null : in.get("username").asString());
+            try {
+                jdbc.sql("UPDATE users SET username = ? WHERE id = ? AND username <> ?").params(username, id, username).update();
+            } catch (DuplicateKeyException e) {
+                throw ApiException.conflict("that username is taken");
+            }
+        }
         return me(jwt);
     }
 

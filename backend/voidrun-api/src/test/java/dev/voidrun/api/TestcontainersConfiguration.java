@@ -4,6 +4,7 @@ import com.redis.testcontainers.RedisContainer;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -27,6 +28,12 @@ public class TestcontainersConfiguration {
     @Bean
     LocalKafka kafka() {
         return new LocalKafka();
+    }
+
+    @Bean
+    @Primary
+    CapturingMailer capturingMailer() {
+        return new CapturingMailer();
     }
 
     @Bean

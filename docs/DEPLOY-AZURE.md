@@ -176,6 +176,25 @@ are set, nobody can buy a plan and only admins host. To take payments:
 
 To make hosting free for everyone instead: `HOST_PLAN_REQUIRED=false`.
 
+## 10b. Email sign-in codes
+
+"Email me a code" and "Forgot password" need an SMTP server on the live site
+(there is no Mailpit there, and codes are never written to the log). Gmail
+works for a small site: turn on 2-step verification, create an app password at
+<https://myaccount.google.com/apppasswords>, then in `.env`:
+
+```
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=you@gmail.com
+MAIL_PASSWORD=<the 16-letter app password>
+MAIL_FROM=VoidRun <you@gmail.com>
+```
+
+and `make prod-up`. Brevo, SendGrid, Mailgun or Amazon SES work the same way
+with their SMTP details. Azure blocks outbound port 25, so always use 587.
+Without these settings the email options are hidden and password sign-in still works.
+
 ## 11. Shipping updates
 
 On your laptop: commit and `git push`. Then on the server:

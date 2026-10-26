@@ -62,9 +62,9 @@ const PALETTES: Record<string, Palette> = {
   "voidrun-midnight": { base: "vs-dark", background: "#0c1426", highlight: "#15213a", lineNumber: "#4f6288",
     activeLineNumber: "#e5edfa", guide: "#202f4e", keyword: "38bdf8", comment: "7889ab", number: "fbbf24",
     string: "6ee7b7", type: "c4b5fd" },
-  "voidrun-emerald": { base: "vs", background: "#fcfefc", highlight: "#e1f0e680", lineNumber: "#8fa898",
-    activeLineNumber: "#0d2016", guide: "#cce2d3", keyword: "15803d", comment: "6b7f72", number: "9a6a00",
-    string: "0e7490", type: "1d4ed8" },
+  "voidrun-emerald": { base: "vs", background: "#fdfdfc", highlight: "#eeefeb80", lineNumber: "#9ca3af",
+    activeLineNumber: "#14181a", guide: "#ddded8", keyword: "16804a", comment: "6b7280", number: "9a6a00",
+    string: "0f766e", type: "1d4ed8" },
 };
 
 function defineThemes(instance: typeof monaco) {

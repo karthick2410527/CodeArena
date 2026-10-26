@@ -27,11 +27,15 @@ public class AuthService {
     // which emails are registered.
     private final String dummyHash = passwords.encode("voidrun-timing-equaliser");
 
-    public AuthService(JdbcClient jdbc, UserRepository users, JwtService jwt, VoidRunProperties props) {
+    private final EmailCodes codes;
+
+    public AuthService(JdbcClient jdbc, UserRepository users, JwtService jwt, VoidRunProperties props,
+            EmailCodes codes) {
         this.jdbc = jdbc;
         this.users = users;
         this.jwt = jwt;
         this.props = props;
+        this.codes = codes;
     }
 
     public AuthResponse register(AuthDtos.RegisterRequest req) {
@@ -58,6 +62,31 @@ public class AuthService {
             throw ApiException.unauthorized("invalid email or password");
         }
         return issueTokens(user);
+    }
+
+    /** Signs in with a code from {@link EmailCodes}; receiving it proves the address, so it is marked verified. */
+    public AuthResponse loginWithCode(AuthDtos.CodeLoginRequest req) {
+        UserRow user = codes.redeem(req.email(), req.code(), EmailCodes.Purpose.LOGIN);
+        return issueTokens(markVerified(user));
+    }
+
+    /**
+     * Sets a new password with a reset code. Every other session is signed out,
+     * since a reset usually means the old password is no longer safe.
+     */
+    public AuthResponse resetPassword(AuthDtos.ResetPasswordRequest req) {
+        String password = AccountRules.password(req.password());
+        UserRow user = codes.redeem(req.email(), req.code(), EmailCodes.Purpose.RESET);
+        jdbc.sql("UPDATE users SET password_hash = ? WHERE id = ?").params(passwords.encode(password), user.id()).update();
+        jdbc.sql("UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = ? AND revoked_at IS NULL")
+                .param(user.id())
+                .update();
+        return issueTokens(markVerified(user));
+    }
+
+    private UserRow markVerified(UserRow user) {
+        jdbc.sql("UPDATE users SET email_verified = TRUE WHERE id = ? AND NOT email_verified").param(user.id()).update();
+        return users.findById(user.id()).orElse(user);
     }
 
     /** Rotates a refresh token: the presented one is revoked atomically, so it works exactly once. */

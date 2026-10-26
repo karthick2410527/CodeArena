@@ -79,7 +79,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/problems", "/api/v1/problems/**", "/api/v1/tags",
-                                "/api/v1/languages", "/api/v1/limits", "/api/v1/auth/providers",
+                                "/api/v1/languages", "/api/v1/limits", "/api/v1/auth/providers", "/api/v1/auth/email",
                                 "/api/v1/health", "/api/v1/ready",
                                 // Contests and profiles can be browsed signed out, like on Codeforces;
                                 // /contests/mine and /contests/joined match here too and ask for a sign-in themselves.
@@ -90,6 +90,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh",
                                 "/api/v1/auth/logout", "/api/v1/auth/oauth/exchange",
+                                "/api/v1/auth/email/code", "/api/v1/auth/email/login", "/api/v1/auth/password/reset",
                                 // Razorpay calls this; the body's HMAC signature authenticates it.
                                 "/api/v1/billing/webhook").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/error").permitAll()

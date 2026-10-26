@@ -8,9 +8,9 @@ import {
   BadgeCheck,
   BarChart3,
   BookOpen,
+  CalendarClock,
   Check,
   ChevronRight,
-  Circle,
   DownloadCloud,
   ExternalLink,
   Eye,
@@ -21,7 +21,9 @@ import {
   Plus,
   Rocket,
   Settings2,
+  Timer,
   Trash2,
+  Trophy,
   UserPlus,
   Users,
   X,
@@ -32,7 +34,7 @@ import { ApiError } from "../../api/client";
 import type { ContestDetail, ContestFormat, ContestInput } from "../../api/types";
 import { useAuth, useViewer } from "../../auth/AuthContext";
 import { FORMAT_HELP, FORMAT_LABELS, PhaseBadge, formatDuration, formatWhen, livePhase, useNow } from "../../components/contest";
-import { ClockTiles, HubHero } from "../../components/ContestHub";
+import { Ring, RollingClock } from "../../components/flair";
 import Markdown, { sourceName } from "../../components/Markdown";
 import { ErrorState, Spinner } from "../../components/Feedback";
 import CreateContestWizard from "./CreateContestWizard";
@@ -98,46 +100,69 @@ function Manage({ d }: { d: ContestDetail }) {
       { replace: true },
     );
   const counts: Partial<Record<Tab, number>> = { problems: c.problem_count, authors: c.authors.length };
+  const facts: [LucideIcon, string][] = [
+    [CalendarClock, formatWhen(c.starts_at)],
+    [Timer, formatDuration(c.duration_minutes)],
+    [Trophy, FORMAT_LABELS[c.format]],
+    [Users, `${c.participants} registered`],
+  ];
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <Link to="/host" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
-        <ArrowLeft size={14} aria-hidden="true" /> Hosted contests
-      </Link>
-      <HubHero
-        eyebrow="Manage contest"
-        title={c.title}
-        description={
-          <span className="flex flex-wrap items-center gap-2">
-            <PhaseBadge phase={phase} published={c.published} />
-            <span>
-              {FORMAT_LABELS[c.format]} · {formatWhen(c.starts_at)} · {formatDuration(c.duration_minutes)}
-            </span>
-          </span>
-        }
-        actions={
-          <>
-            <Link to={`/contests/${c.slug}`} className="btn btn-outline min-h-[40px]">
-              <ExternalLink size={15} aria-hidden="true" /> View contest page
-            </Link>
-            {phase !== "UPCOMING" && (
-              <Link to={`/contests/${c.slug}/standings`} className="btn btn-ghost min-h-[40px]">
-                <BarChart3 size={15} aria-hidden="true" /> Standings
+    <div className="mx-auto max-w-5xl">
+      <nav aria-label="Breadcrumb" className="mb-5 flex min-w-0 items-center gap-1.5 text-sm text-muted">
+        <Link to="/host" className="inline-flex items-center gap-1.5 hover:text-ink">
+          <ArrowLeft size={14} aria-hidden="true" /> Host
+        </Link>
+        <ChevronRight size={14} className="text-faint" aria-hidden="true" />
+        <span className="truncate text-ink">{c.title}</span>
+      </nav>
+
+      <header className="relative mb-8 overflow-hidden rounded-[1.75rem] border border-line/80 bg-surface p-6 shadow-panel sm:p-8">
+        <div className="dots pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
+        <div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-accent/15 blur-3xl" aria-hidden="true" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <PhaseBadge phase={phase} published={c.published} />
+              <span className="text-xs text-faint">{c.my_role === "OWNER" ? "You own this contest" : "You co-author this contest"}</span>
+            </div>
+            <h1 className="mt-3 truncate font-display text-[2.25rem] font-semibold leading-none tracking-tight text-ink sm:text-[2.75rem]">
+              {c.title}
+            </h1>
+            <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
+              {facts.map(([Icon, text]) => (
+                <li key={text} className="flex items-center gap-1.5">
+                  <Icon size={15} className="text-accent" aria-hidden="true" /> {text}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {!c.published && (
+                <button type="button" className="btn btn-primary min-h-[42px] px-5" onClick={() => go("overview")}>
+                  <Rocket size={15} aria-hidden="true" /> Get it ready to publish
+                </button>
+              )}
+              <Link to={`/contests/${c.slug}`} className="btn btn-outline min-h-[42px] px-4">
+                <ExternalLink size={15} aria-hidden="true" /> View contest page
               </Link>
-            )}
-          </>
-        }
-        aside={
-          phase === "ENDED" ? undefined : (
-            <div className="rounded-2xl border border-line/70 bg-surface/80 p-5 backdrop-blur">
-              <p className={`mb-3 text-xs font-semibold uppercase tracking-[0.14em] ${phase === "RUNNING" ? "text-good" : "text-faint"}`}>
+              {phase !== "UPCOMING" && (
+                <Link to={`/contests/${c.slug}/standings`} className="btn btn-ghost min-h-[42px] px-4">
+                  <BarChart3 size={15} aria-hidden="true" /> Standings
+                </Link>
+              )}
+            </div>
+          </div>
+          {phase !== "ENDED" && (
+            <div className="shrink-0">
+              <p className={`mb-2.5 text-xs font-semibold uppercase tracking-[0.14em] ${phase === "RUNNING" ? "text-good" : "text-faint"}`}>
                 {phase === "RUNNING" ? "Live · ends in" : "Starts in"}
               </p>
-              <ClockTiles ms={target - now} label={phase === "RUNNING" ? "Time left" : "Time to the start"} />
+              <RollingClock ms={target - now} label={phase === "RUNNING" ? "Time left" : "Time to the start"} tone={phase === "RUNNING" ? "good" : "accent"} />
             </div>
-          )
-        }
-      />
+          )}
+        </div>
+      </header>
+
       {locked && (
         <div className="mb-6">
           <Notice tone="warn">
@@ -146,60 +171,58 @@ function Manage({ d }: { d: ContestDetail }) {
           </Notice>
         </div>
       )}
-      <div className="grid gap-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8">
-        <div
-          role="tablist"
-          aria-label="Contest settings"
-          aria-orientation="vertical"
-          className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:sticky lg:top-24 lg:mx-0 lg:flex-col lg:self-start lg:overflow-visible lg:px-0"
-        >
-          {TABS.map(([t, label, Icon]) => {
-            const on = t === tab;
-            return (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                id={`tab-${t}`}
-                aria-selected={on}
-                aria-controls="manage-panel"
-                onClick={() => go(t)}
-                className={`flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                  on ? "bg-surface text-ink shadow-panel ring-1 ring-line/80" : "text-muted hover:bg-sunken/70 hover:text-ink"
-                }`}
-              >
-                <Icon size={16} className={on ? "text-accent" : ""} aria-hidden="true" />
-                <span className="flex-1">{label}</span>
-                {counts[t] !== undefined && (
-                  <span className={`rounded-full px-1.5 text-xs tabular ${on ? "bg-accent/10 text-accent" : "bg-sunken text-faint"}`}>{counts[t]}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <div role="tabpanel" id="manage-panel" aria-labelledby={`tab-${tab}`} key={tab} className="animate-step min-w-0 space-y-6">
-          {tab === "overview" && <Overview d={d} phase={phase} onGo={go} />}
-          {tab === "details" && (
-            <>
-              <ContestForm existing={d} locked={locked} />
-              {c.my_role === "OWNER" && !locked && <DangerZone slug={c.slug} />}
-            </>
-          )}
-          {tab === "problems" && <ProblemsPanel d={d} locked={locked} />}
-          {tab === "editorial" && <EditorialPanel d={d} />}
-          {tab === "authors" && <AuthorsPanel d={d} />}
-        </div>
+
+      <div role="tablist" aria-label="Contest settings" className="mb-6 flex gap-6 overflow-x-auto border-b border-line">
+        {TABS.map(([t, label, Icon]) => {
+          const on = t === tab;
+          return (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              id={`tab-${t}`}
+              aria-selected={on}
+              aria-controls="manage-panel"
+              onClick={() => go(t)}
+              className={`relative -mb-px flex shrink-0 items-center gap-2 pb-3 pt-1 text-sm font-medium transition-colors ${on ? "text-ink" : "text-muted hover:text-ink"}`}
+            >
+              <Icon size={15} className={on ? "text-accent" : ""} aria-hidden="true" />
+              {label}
+              {counts[t] !== undefined && (
+                <span className={`rounded-full px-1.5 text-xs tabular ${on ? "bg-accent/10 text-accent" : "bg-sunken text-faint"}`}>{counts[t]}</span>
+              )}
+              <span
+                className={`absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-accent transition-transform duration-300 ${on ? "scale-x-100" : "scale-x-0"}`}
+                aria-hidden="true"
+              />
+            </button>
+          );
+        })}
+      </div>
+
+      <div role="tabpanel" id="manage-panel" aria-labelledby={`tab-${tab}`} key={tab} className="animate-step min-w-0 space-y-6">
+        {tab === "overview" && <Overview d={d} phase={phase} onGo={go} />}
+        {tab === "details" && (
+          <>
+            <ContestForm existing={d} locked={locked} />
+            {c.my_role === "OWNER" && !locked && <DangerZone slug={c.slug} />}
+          </>
+        )}
+        {tab === "problems" && <ProblemsPanel d={d} locked={locked} />}
+        {tab === "editorial" && <EditorialPanel d={d} />}
+        {tab === "authors" && <AuthorsPanel d={d} />}
       </div>
     </div>
   );
 }
 
-/** Publishing, and what is left before the round can go public. */
+/** What is left before the round can go public, as a checklist beside the publish box. */
 function Overview({ d, phase, onGo }: { d: ContestDetail; phase: string; onGo: (t: Tab) => void }) {
   const c = d.contest;
   const { bySlug, mine } = useMyProblems();
   const untested = d.problems.filter((p) => (bySlug.get(p.slug)?.hidden_count ?? 1) === 0);
-  const checks: [string, string, boolean | null, Tab][] = [
+  // [label, hint, done (null: not yet decidable), tab, optional]
+  const checks: [string, string, boolean | null, Tab, boolean?][] = [
     ["Details and schedule", `${FORMAT_LABELS[c.format]}, ${formatDuration(c.duration_minutes)}`, true, "details"],
     [
       "Problems",
@@ -219,48 +242,50 @@ function Overview({ d, phase, onGo }: { d: ContestDetail; phase: string; onGo: (
       d.problems.length > 0 && mine.data ? untested.length === 0 : null,
       "problems",
     ],
-    ["Editorial", "Optional, released when it ends", null, "editorial"],
-    ["Co-authors", c.authors.length > 1 ? `${c.authors.length - 1} invited` : "Optional", c.authors.length > 1 ? true : null, "authors"],
+    ["Editorial", "Released when the contest ends", null, "editorial", true],
+    ["Co-authors", c.authors.length > 1 ? `${c.authors.length - 1} invited` : "Write and test it with others", c.authors.length > 1 ? true : null, "authors", true],
   ];
-  const required = checks.filter(([, , ok]) => ok !== null);
+  const required = checks.filter(([, , , , optional]) => !optional);
   const done = required.filter(([, , ok]) => ok).length;
   return (
-    <>
-      <PublishPanel d={d} phase={phase} />
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <section className="card p-5 sm:p-6" aria-labelledby="ready-h">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 id="ready-h" className="text-lg font-semibold text-ink">
-            Getting it ready
-          </h2>
-          <span className="text-sm tabular text-faint">
-            {done} of {required.length} done
-          </span>
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div>
+            <h2 id="ready-h" className="font-display text-lg font-semibold text-ink">
+              Getting it ready
+            </h2>
+            <p className="text-sm text-muted">Work down the list; click a step to jump to it.</p>
+          </div>
+          <Ring value={done} max={required.length} size={44} label={`${done} of ${required.length} done`} />
         </div>
-        <div className="progress-track mb-5">
-          <div className="progress-fill" style={{ width: `${required.length ? (done / required.length) * 100 : 0}%` }} />
-        </div>
-        <ul className="divide-y divide-line/70 overflow-hidden rounded-xl border border-line">
-          {checks.map(([label, hint, ok, t]) => (
-            <li key={label}>
-              <button type="button" onClick={() => onGo(t)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-sunken/50">
-                {ok ? (
-                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-good/15 text-good">
-                    <Check size={12} strokeWidth={3} aria-hidden="true" />
-                  </span>
-                ) : (
-                  <Circle size={20} className={`shrink-0 ${ok === false ? "text-warn" : "text-line-strong"}`} aria-hidden="true" />
-                )}
+        <ol className="relative">
+          {checks.map(([label, hint, ok, t, optional], i) => (
+            <li key={label} className="relative pb-1 last:pb-0">
+              {i < checks.length - 1 && <span className="absolute left-[1.15rem] top-10 h-[calc(100%-1.5rem)] w-px bg-line" aria-hidden="true" />}
+              <button type="button" onClick={() => onGo(t)} className="group flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-sunken/50">
+                <span
+                  className={`relative grid h-7 w-7 shrink-0 place-items-center rounded-full ${
+                    ok ? "bg-good text-white" : ok === false ? "border-2 border-warn bg-surface text-warn" : "border-2 border-line-strong bg-surface text-faint"
+                  }`}
+                >
+                  {ok ? <Check size={13} strokeWidth={3} aria-hidden="true" /> : <span className="font-mono text-[0.6875rem] font-semibold">{i + 1}</span>}
+                </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-ink">{label}</span>
+                  <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                    {label}
+                    {optional && <span className="rounded-full bg-sunken px-1.5 text-[0.625rem] font-medium text-faint">optional</span>}
+                  </span>
                   <span className={`block text-xs ${ok === false ? "text-warn" : "text-faint"}`}>{hint}</span>
                 </span>
-                <ChevronRight size={16} className="shrink-0 text-faint" aria-hidden="true" />
+                <ChevronRight size={16} className="shrink-0 text-faint transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
               </button>
             </li>
           ))}
-        </ul>
+        </ol>
       </section>
-    </>
+      <PublishPanel d={d} phase={phase} />
+    </div>
   );
 }
 
@@ -488,13 +513,17 @@ function ProblemsPanel({ d, locked }: { d: ContestDetail; locked: boolean }) {
     (chosen.length !== d.problems.length ||
       chosen.some((p, i) => p.slug !== d.problems[i]?.slug || p.points !== d.problems[i]?.points));
   const newProblem = `/studio/problems/new?contest=${encodeURIComponent(c.slug)}`;
+  const pick = (id: string) => {
+    const p = available.find((x) => x.id === id);
+    if (p) setChosen([...list, { problem_id: p.id, slug: p.slug, title: p.title, points: defaultPoints(c.format, list.length) }]);
+  };
 
   return (
     <section aria-labelledby="problems-h" className="space-y-4">
       <div className="card p-5 sm:p-6">
         <PanelHead icon={ListChecks} id="problems-h" title="Problems">
-          Each author adds problems they wrote; once one is in the contest, every author can edit it. They stay hidden
-          from practice until the contest ends, and each needs hidden tests before you can publish.
+          Hidden from everyone but the authors until the start, and open for practice once the contest ends. Each one
+          needs hidden tests before you can publish.
         </PanelHead>
         {error && (
           <div className="mb-3">
@@ -508,13 +537,15 @@ function ProblemsPanel({ d, locked }: { d: ContestDetail; locked: boolean }) {
         )}
         {mine.isPending ? (
           <Spinner label="Loading your problems…" />
+        ) : list.length === 0 ? (
+          locked ? (
+            <p className="rounded-xl border border-dashed border-line-strong/70 px-4 py-8 text-center text-sm text-muted">This contest has no problems.</p>
+          ) : (
+            <AddProblems big newProblem={newProblem} available={available} onPick={pick} />
+          )
         ) : (
           <ol className="space-y-3" aria-label="Contest problems">
-            {list.length === 0 && (
-              <li className="rounded-xl border border-dashed border-line-strong/70 px-4 py-8 text-center text-sm text-muted">
-                No problems yet. Write one, import one, or add one you already have.
-              </li>
-            )}
+
             {list.map((p, i) => {
               const info = byId.get(p.problem_id);
               const tests = info ? info.sample_count + info.hidden_count : 0;
@@ -606,52 +637,7 @@ function ProblemsPanel({ d, locked }: { d: ContestDetail; locked: boolean }) {
         )}
       </div>
 
-      {!locked && !mine.isPending && (
-        <div className="grid gap-3 md:grid-cols-3" aria-label="Add a problem to the contest">
-          <Link to={newProblem} className="card card-hover flex items-start gap-3 p-4">
-            <span className="icon-tile shrink-0">
-              <Plus size={18} aria-hidden="true" />
-            </span>
-            <span>
-              <span className="block font-semibold text-ink">Write a new problem</span>
-              <span className="block text-xs text-muted">From scratch, then come back here</span>
-            </span>
-          </Link>
-          <Link to={`${newProblem}&import=1`} className="card card-hover flex items-start gap-3 p-4">
-            <span className="icon-tile shrink-0">
-              <DownloadCloud size={18} aria-hidden="true" />
-            </span>
-            <span>
-              <span className="block font-semibold text-ink">Import from Codeforces / AtCoder</span>
-              <span className="block text-xs text-muted">Paste a link, then make it yours</span>
-            </span>
-          </Link>
-          <div className="card flex flex-col gap-2 p-4">
-            <label htmlFor="add-problem" className="flex items-center gap-2 font-semibold text-ink">
-              <FolderOpen size={16} className="text-accent" aria-hidden="true" /> Use one of yours
-            </label>
-            <select
-              id="add-problem"
-              className="input min-h-[36px] text-sm"
-              aria-label="Add a problem"
-              value=""
-              onChange={(e) => {
-                const p = available.find((x) => x.id === e.target.value);
-                if (p) {
-                  setChosen([...list, { problem_id: p.id, slug: p.slug, title: p.title, points: defaultPoints(c.format, list.length) }]);
-                }
-              }}
-            >
-              <option value="">{available.length ? "Pick a problem…" : "No other problems of yours"}</option>
-              {available.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title} ({p.sample_count + p.hidden_count} tests)
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
+      {!locked && !mine.isPending && list.length > 0 && <AddProblems newProblem={newProblem} available={available} onPick={pick} />}
 
       {!locked && dirty && (
         <div className="panel sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -667,6 +653,87 @@ function ProblemsPanel({ d, locked }: { d: ContestDetail; locked: boolean }) {
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * The three ways to add a problem: write one, import one, or use one you have.
+ * Large as the empty state, a compact toolbar under a list.
+ */
+function AddProblems({
+  big = false,
+  newProblem,
+  available,
+  onPick,
+}: {
+  big?: boolean;
+  newProblem: string;
+  available: { id: string; title: string; sample_count: number; hidden_count: number }[];
+  onPick: (id: string) => void;
+}) {
+  const picker = (
+    <select id="add-problem" className={`input text-sm ${big ? "" : "min-h-[36px] w-auto"}`} aria-label="Add a problem" value="" onChange={(e) => onPick(e.target.value)}>
+      <option value="">{available.length ? "Pick one of your problems…" : "No other problems of yours"}</option>
+      {available.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.title} ({p.sample_count + p.hidden_count} tests)
+        </option>
+      ))}
+    </select>
+  );
+  if (!big) {
+    return (
+      <div className="card flex flex-wrap items-center gap-2 p-3" aria-label="Add a problem to the contest">
+        <span className="px-2 text-sm font-medium text-muted">Add another</span>
+        <Link to={newProblem} className="btn btn-outline min-h-[36px] px-3 text-sm">
+          <Plus size={14} aria-hidden="true" /> Write
+        </Link>
+        <Link to={`${newProblem}&import=1`} className="btn btn-outline min-h-[36px] px-3 text-sm">
+          <DownloadCloud size={14} aria-hidden="true" /> Import
+        </Link>
+        <div className="min-w-[14rem] flex-1">{picker}</div>
+      </div>
+    );
+  }
+  const option = "group flex flex-col rounded-2xl border border-line bg-surface p-5 text-left transition-[border-color,box-shadow] hover:border-accent/40 hover:shadow-panel";
+  return (
+    <div className="dots rounded-2xl border border-dashed border-line-strong/70 bg-paper/40 p-5 sm:p-8" aria-label="Add a problem to the contest">
+      <div className="mx-auto max-w-md text-center">
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-accent/10 text-accent">
+          <ListChecks size={22} aria-hidden="true" />
+        </span>
+        <p className="mt-3 font-display text-lg font-semibold text-ink">Add your first problem</p>
+        <p className="mt-1 text-sm text-muted">Problems become A, B, C… in the order you add them. You can reorder them later.</p>
+      </div>
+      <div className="mt-6 grid gap-3 md:grid-cols-3">
+        <Link to={newProblem} className={option}>
+          <span className="icon-tile">
+            <Plus size={18} aria-hidden="true" />
+          </span>
+          <span className="mt-4 font-semibold text-ink">Write a new problem</span>
+          <span className="mt-1 text-sm text-muted">From scratch. You come back here when it's created.</span>
+          <span className="mt-4 text-sm font-medium text-accent">Start writing →</span>
+        </Link>
+        <Link to={`${newProblem}&import=1`} className={option}>
+          <span className="icon-tile">
+            <DownloadCloud size={18} aria-hidden="true" />
+          </span>
+          <span className="mt-4 font-semibold text-ink">Import from Codeforces / AtCoder</span>
+          <span className="mt-1 text-sm text-muted">Paste a link; the statement, limits and samples are filled in.</span>
+          <span className="mt-4 text-sm font-medium text-accent">Paste a link →</span>
+        </Link>
+        <div className={`${option} hover:shadow-none`}>
+          <span className="icon-tile">
+            <FolderOpen size={18} aria-hidden="true" />
+          </span>
+          <label htmlFor="add-problem" className="mt-4 font-semibold text-ink">
+            Use one of yours
+          </label>
+          <span className="mt-1 text-sm text-muted">A problem you've already written in your studio.</span>
+          <div className="mt-4">{picker}</div>
+        </div>
+      </div>
+    </div>
   );
 }
 

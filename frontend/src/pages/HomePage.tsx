@@ -5,20 +5,18 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
-  Bug,
+  Check,
   CalendarClock,
   Code2,
   PenSquare,
   Radio,
   Search,
-  Swords,
   Trophy,
   Users,
 } from "lucide-react";
 import { contestsApi, problemsApi } from "../api/endpoints";
-import type { ContestSummary } from "../api/types";
+import { ContestBuilder, JudgePipeline, LiveBoard, ReplayDemo } from "../components/visuals";
 import { useAuth } from "../auth/AuthContext";
-import { Countdown, FORMAT_LABELS, PhaseBadge, formatDuration, useNow } from "../components/contest";
 
 /** A framed editor with a verdict panel beside it. Static: it shows the shape of the product. */
 function ProductPreview() {
@@ -85,45 +83,6 @@ function ProductPreview() {
   );
 }
 
-/** Running and upcoming contests, straight from the API. Hidden when there are none. */
-function HappeningNow() {
-  const now = useNow();
-  const running = useQuery({ queryKey: ["contests", "running"], queryFn: () => contestsApi.list("running", 1, 3) });
-  const upcoming = useQuery({ queryKey: ["contests", "upcoming"], queryFn: () => contestsApi.list("upcoming", 1, 3) });
-  const items: ContestSummary[] = [...(running.data?.items ?? []), ...(upcoming.data?.items ?? [])].slice(0, 3);
-  if (items.length === 0) return null;
-  return (
-    <section className="reveal mx-auto max-w-6xl px-4 pb-20 sm:px-6" aria-labelledby="now-h">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow">Happening now</p>
-          <h2 id="now-h" className="mt-2 text-3xl font-semibold text-ink">
-            Rounds you can join
-          </h2>
-        </div>
-        <Link to="/contests" className="text-sm font-medium text-accent hover:underline">
-          All contests →
-        </Link>
-      </div>
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {items.map((c) => (
-          <Link key={c.slug} to={`/contests/${c.slug}`} className="card group p-5 transition-colors hover:border-accent/40 hover:shadow-panel">
-            <div className="flex items-center justify-between gap-2">
-              <PhaseBadge phase={c.phase} />
-              <span className="text-xs">
-                <Countdown startsAt={c.starts_at} endsAt={c.ends_at} now={now} />
-              </span>
-            </div>
-            <h3 className="mt-3 text-lg font-semibold text-ink group-hover:text-accent">{c.title}</h3>
-            <p className="mt-1 text-sm text-muted">
-              {formatDuration(c.duration_minutes)} · {FORMAT_LABELS[c.format]} · {c.participants} registered
-            </p>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 const STRIP = [
   "C++17",
@@ -160,6 +119,108 @@ function Marquee() {
   );
 }
 
+/**
+ * The product, shown working: each row pairs a short pitch with an animated
+ * illustration of that part of VoidRun (made-up data).
+ */
+function ProductTour() {
+  return (
+    <div className="space-y-24 pb-24 pt-20 sm:space-y-32 sm:pt-28">
+      <section className="reveal mx-auto max-w-6xl px-4 sm:px-6" aria-labelledby="tour-judge-h">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="eyebrow">Under the hood</p>
+          <h2 id="tour-judge-h" className="mt-2 text-3xl font-semibold text-ink sm:text-4xl">
+            What happens when you press Submit
+          </h2>
+          <p className="mt-3 text-muted">
+            Your code is queued through Kafka, compiled and run in a fresh, locked-down sandbox against every hidden test,
+            and the verdict comes back in moments. Contest submissions skip ahead of practice traffic.
+          </p>
+        </div>
+        <JudgePipeline className="mt-10" />
+      </section>
+
+      <TourRow
+        id="tour-live-h"
+        eyebrow="Compete"
+        title="Standings that move as verdicts land"
+        body="Register for a round under Codeforces, ICPC, AtCoder or IOI rules. Every accepted solution re-ranks the board for everyone watching, live."
+        points={["Four scoring rules", "Live updates, no refresh", "Editorials when it ends"]}
+        visual={<LiveBoard />}
+        cta={["/contests", "See contests"]}
+      />
+      <TourRow
+        id="tour-debug-h"
+        eyebrow="Debug"
+        title="Step backwards through your own program"
+        body="Press Debug and your C++ run is recorded once. Then move through it in both directions: the current line, the call stack and every variable at every step."
+        points={["Forwards and backwards", "Call stack and variables", "Fix a compile error in place"]}
+        visual={<ReplayDemo />}
+        cta={["/problems", "Try it on a problem"]}
+        flip
+      />
+      <TourRow
+        id="tour-host-h"
+        eyebrow="Host"
+        title="Run a round of your own"
+        body="Write problems or import them from Codeforces and AtCoder, pick the rules, invite co-authors and publish. People register and race on your clock."
+        points={["Four-step setup", "Co-authors and editorials", "Its own judging queue"]}
+        visual={<ContestBuilder />}
+        cta={["/host", "Go to Host"]}
+      />
+    </div>
+  );
+}
+
+function TourRow({
+  id,
+  eyebrow,
+  title,
+  body,
+  points,
+  visual,
+  cta,
+  flip = false,
+}: {
+  id: string;
+  eyebrow: string;
+  title: string;
+  body: string;
+  points: string[];
+  visual: React.ReactNode;
+  cta: [string, string];
+  flip?: boolean;
+}) {
+  return (
+    <section className="reveal mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16" aria-labelledby={id}>
+      <div className={flip ? "lg:order-2" : ""}>
+        <p className="eyebrow">{eyebrow}</p>
+        <h2 id={id} className="mt-2 text-3xl font-semibold leading-tight text-ink sm:text-4xl">
+          {title}
+        </h2>
+        <p className="mt-4 text-lg text-muted">{body}</p>
+        <ul className="mt-6 space-y-2.5">
+          {points.map((p) => (
+            <li key={p} className="flex items-center gap-2.5 text-sm font-medium text-ink">
+              <span className="grid h-5 w-5 place-items-center rounded-full bg-accent/10 text-accent">
+                <Check size={12} strokeWidth={3} aria-hidden="true" />
+              </span>
+              {p}
+            </li>
+          ))}
+        </ul>
+        <Link to={cta[0]} className="btn btn-outline mt-8">
+          {cta[1]} <ArrowRight size={15} aria-hidden="true" />
+        </Link>
+      </div>
+      <div className={`relative ${flip ? "lg:order-1" : ""}`}>
+        <div className="pointer-events-none absolute -inset-6 rounded-[2rem] bg-accent/[0.06] blur-2xl" aria-hidden="true" />
+        <div className="relative">{visual}</div>
+      </div>
+    </section>
+  );
+}
+
 function Pillar({
   icon: Icon,
   title,
@@ -185,46 +246,7 @@ function Pillar({
   );
 }
 
-/** A miniature live scoreboard, for the contests pillar. */
-function MiniStandings() {
-  const rows: [number, string, string, string][] = [
-    [1, "zoe", "1396", "bg-good/25"],
-    [2, "ada", "940", "bg-good/10"],
-    [3, "lin", "480", "bg-good/10"],
-  ];
-  return (
-    <div className="overflow-hidden rounded-xl border border-line bg-surface text-sm" aria-hidden="true">
-      {rows.map(([rank, name, score, cell]) => (
-        <div key={name} className="flex items-center gap-3 border-b border-line/60 px-4 py-2 last:border-0">
-          <span className="w-4 font-mono text-faint">{rank}</span>
-          <span className="flex-1 font-medium text-ink">{name}</span>
-          <span className={`rounded-md px-2 py-0.5 font-mono text-xs text-good ${cell}`}>A</span>
-          <span className="w-12 text-right font-semibold text-ink">{score}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
-/** A miniature step-through, for the replay pillar. */
-function MiniReplay() {
-  return (
-    <div className="overflow-hidden rounded-xl border border-line bg-surface font-mono text-xs" aria-hidden="true">
-      {["for (int i = 0; i < n; i++)", "  sum += a[i];", "cout << sum;"].map((l, i) => (
-        <div key={l} className={`flex gap-3 px-4 py-1.5 ${i === 1 ? "bg-accent/15 shadow-[inset_3px_0_0_rgb(var(--c-accent))]" : ""}`}>
-          <span className="w-4 text-faint">{i + 7}</span>
-          <span className="text-ink">{l}</span>
-        </div>
-      ))}
-      <div className="flex justify-between border-t border-line px-4 py-2 text-muted">
-        <span>
-          i = <span className="text-ink">3</span> · sum = <span className="text-accent">12</span>
-        </span>
-        <span>step 14 / 40</span>
-      </div>
-    </div>
-  );
-}
 
 export default function HomePage() {
   const { status } = useAuth();
@@ -297,28 +319,12 @@ export default function HomePage() {
 
         <Marquee />
 
-        <HappeningNow />
+        <ProductTour />
 
         <section id="features" className="reveal mx-auto max-w-6xl px-4 pb-24 sm:px-6">
-          <p className="eyebrow text-center">Features</p>
-          <h2 className="mt-2 text-center text-3xl font-semibold text-ink">From first submission to hosting a round</h2>
+          <p className="eyebrow text-center">And more</p>
+          <h2 className="mt-2 text-center text-3xl font-semibold text-ink">Everything around the code</h2>
           <div className="mt-10 grid gap-4 md:grid-cols-6">
-            <Pillar
-              icon={Swords}
-              title="Live contests, live standings"
-              body="Register, race the clock, and watch the scoreboard move as verdicts land: Codeforces, ICPC, AtCoder or IOI rules."
-              className="md:col-span-3"
-            >
-              <MiniStandings />
-            </Pillar>
-            <Pillar
-              icon={Bug}
-              title="Debug by replaying"
-              body="Record a C++ run once, then step forwards and backwards through it with the call stack and every variable."
-              className="md:col-span-3"
-            >
-              <MiniReplay />
-            </Pillar>
             <Pillar
               icon={Code2}
               title="A real judge"

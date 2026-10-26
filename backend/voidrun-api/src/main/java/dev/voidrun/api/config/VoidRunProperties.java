@@ -17,6 +17,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param outbox      the relay that delivers outbox events to Kafka
  * @param replay      execution recordings for step-through replay
  * @param billing     Host plans and the Razorpay account that takes payment for them
+ * @param mail        sign-in codes by email
  */
 @ConfigurationProperties("voidrun")
 public record VoidRunProperties(
@@ -28,7 +29,8 @@ public record VoidRunProperties(
         Duration runRetention,
         Outbox outbox,
         Replay replay,
-        Billing billing) {
+        Billing billing,
+        Mail mail) {
 
     public VoidRunProperties {
         frontendUrl = frontendUrl == null ? "http://localhost:5173" : frontendUrl.replaceAll("/+$", "");
@@ -38,12 +40,25 @@ public record VoidRunProperties(
         outbox = outbox == null ? new Outbox(true, 100, 3, 1) : outbox;
         replay = replay == null ? new Replay(Duration.ofDays(7)) : replay;
         billing = billing == null ? new Billing(true, true, null, null) : billing;
+        mail = mail == null ? new Mail(null, null) : mail;
         if (jwt == null || jwt.secret() == null || jwt.secret().length() < 32) {
             throw new IllegalStateException(
                     "voidrun.jwt.secret (JWT_SECRET) must be set to at least 32 characters, e.g. `openssl rand -hex 32`");
         }
         if (limits == null) {
             limits = new Limits(64 * 1024, 64 * 1024, 64 * 1024);
+        }
+    }
+
+    /**
+     * @param from     the sender of sign-in codes
+     * @param logCodes without an SMTP server ({@code spring.mail.host}), write codes to the log instead, so
+     *                 email sign-in works in development; production turns this off
+     */
+    public record Mail(String from, Boolean logCodes) {
+        public Mail {
+            from = from == null || from.isBlank() ? "VoidRun <no-reply@voidrun.local>" : from;
+            logCodes = logCodes == null || logCodes;
         }
     }
 

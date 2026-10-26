@@ -102,27 +102,27 @@
   color-scheme: dark;
 }
 
-/* Emerald: light mint paper with a deep green accent. */
+/* Emerald: the Light theme's neutral paper and surfaces, with a green accent. */
 :root[data-theme='emerald'] {
-  --c-paper: 239 247 241;
-  --c-surface: 252 254 252;
-  --c-field: 252 254 252;
-  --c-sunken: 225 240 230;
-  --c-line: 204 226 211;
-  --c-line-strong: 176 205 186;
-  --c-faint: 68 92 79;
-  --c-muted: 50 74 61;
-  --c-ink: 13 32 22;
-  --c-accent: 21 128 61;
-  --c-accent-hover: 22 101 52;
+  --c-paper: 246 246 243;
+  --c-surface: 253 253 252;
+  --c-field: 253 253 252;
+  --c-sunken: 238 239 235;
+  --c-line: 221 222 216;
+  --c-line-strong: 199 201 193;
+  --c-faint: 76 84 92;
+  --c-muted: 58 66 74;
+  --c-ink: 20 24 26;
+  --c-accent: 22 128 74;
+  --c-accent-hover: 16 104 59;
   --c-accent-ink: 255 255 255;
-  --c-good: 4 120 87;
+  --c-good: 15 118 110;
   --c-warn: 154 106 0;
   --c-bad: 179 38 30;
-  --grid-line: 13 32 22;
-  --panel-shine: 0.3;
+  --grid-line: 20 24 26;
+  --panel-shine: 0.03;
   --panel-shadow-1: 0.06;
-  --panel-shadow-2: 0.15;
+  --panel-shadow-2: 0.18;
   color-scheme: light;
 }
 
@@ -266,6 +266,16 @@ h1 { letter-spacing: -0.035em; }
   .pill-choice { @apply min-h-[38px] rounded-full border border-line bg-paper/40 px-4 text-sm font-medium text-muted transition-colors hover:border-line-strong hover:text-ink; }
   .pill-choice-on { @apply border-accent bg-accent text-accent-ink hover:border-accent hover:text-accent-ink; }
 
+  /* A soft light that follows the pointer across a card (set --mx/--my from JS). */
+  .spotlight { position: relative; isolation: isolate; }
+  .spotlight::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(420px circle at var(--mx, 70%) var(--my, 0%), rgb(var(--c-accent) / 0.12), transparent 60%);
+    transition: background 0.2s;
+  }
+  /* Dotted paper texture for hero surfaces. */
+  .dots { background-image: radial-gradient(rgb(var(--grid-line) / 0.09) 1px, transparent 1px); background-size: 16px 16px; }
+
   /* Top bar links. */
   .topnav-link { @apply relative z-10 inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium text-muted transition-colors hover:text-ink; }
   .topnav-link[aria-current='page'] { @apply text-ink; }
@@ -300,6 +310,11 @@ h1 { letter-spacing: -0.035em; }
 @keyframes vr-drift { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(4%, -6%, 0) scale(1.08); } }
 @keyframes vr-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes vr-pop { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
+/* A countdown digit rolling in from above when it changes. */
+@keyframes vr-roll { from { transform: translateY(-55%); opacity: 0; } to { transform: none; opacity: 1; } }
+/* A packet travelling along a wire between two stations of the judge illustration. */
+@keyframes vr-packet-x { from { transform: translateX(-20px); opacity: 0.2; } 50% { opacity: 1; } to { transform: translateX(20px); opacity: 0.2; } }
+@keyframes vr-packet-y { from { transform: translateY(-12px); opacity: 0.2; } 50% { opacity: 1; } to { transform: translateY(12px); opacity: 0.2; } }
 
 /* Each page eases in when you arrive on it. */
 .animate-page { animation: vr-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
@@ -336,6 +351,8 @@ h1 { letter-spacing: -0.035em; }
 .marquee:hover > div { animation-play-state: paused; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-page, .animate-step, .animate-pop, .stagger > *, .reveal, .aurora > span, .marquee > div { animation: none !important; }
+  .animate-page, .animate-step, .animate-pop, .stagger > *, .reveal, .aurora > span, .marquee > div,
+  .animate-pulse, .animate-ping, [class*="animate-[vr-"] { animation: none !important; }
+  .spotlight::before { transition: none; }
   html { scroll-behavior: auto; }
 }

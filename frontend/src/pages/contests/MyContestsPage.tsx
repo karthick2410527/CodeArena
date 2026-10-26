@@ -1,265 +1,300 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, BadgeCheck, Check, Circle, ExternalLink, FileCode2, PenSquare, Plus, Settings2, Swords } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarClock, Check, FileCode2, PenLine, PenSquare, Plus, Radio, Settings2, Sparkles, Trophy, Users } from "lucide-react";
 import { billingApi, contestsApi, studioApi } from "../../api/endpoints";
-import type { ContestSummary } from "../../api/types";
-import { HostTabs, HubHero, SectionHead } from "../../components/ContestHub";
+import type { AdminProblem, ContestSummary, Paginated } from "../../api/types";
+import { useAuth } from "../../auth/AuthContext";
+import { HostTabs } from "../../components/ContestHub";
+import { Ring } from "../../components/flair";
 import { useHosting } from "../../components/hosting";
-import { Countdown, FORMAT_LABELS, PhaseBadge, formatDuration, formatWhen, livePhase, useNow } from "../../components/contest";
+import { Countdown, FORMAT_LABELS, formatDuration, formatWhen, livePhase, useNow } from "../../components/contest";
 import { ErrorState, Spinner } from "../../components/Feedback";
+import { ContestBuilder } from "../../components/visuals";
+
+type Stage = "draft" | "scheduled" | "live" | "finished";
+
+const STAGES: [Stage, string, typeof PenLine, string][] = [
+  ["draft", "Draft", PenLine, "Only you and your co-authors see these"],
+  ["scheduled", "Scheduled", CalendarClock, "Public; people are registering"],
+  ["live", "Live", Radio, "Running right now"],
+  ["finished", "Finished", Trophy, "Standings and editorial are out"],
+];
+
+function greeting(hour: number) {
+  return hour < 5 ? "Working late" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+}
 
 /**
- * Host: everything about running rounds, apart from competing in them. The
- * contests you host or co-author (drafts included, with what each still
- * needs), your problems, and your plan.
+ * Host, as a control room: every contest you run on one board from draft to
+ * finished, what each still needs, your plan and your problems.
  */
 export default function MyContestsPage() {
+  const { user } = useAuth();
   const mine = useQuery({ queryKey: ["my-contests"], queryFn: () => contestsApi.mine() });
+  const problems = useQuery({
+    queryKey: ["admin-problems", "studio", { page: 1, limit: 6 }],
+    queryFn: () => studioApi.listProblems({ page: 1, limit: 6 }),
+  });
   const host = useHosting();
   const now = useNow();
+
   const all = mine.data ?? [];
-  const drafts = all.filter((c) => !c.published);
-  const active = all.filter((c) => c.published && livePhase(c.starts_at, c.ends_at, now) !== "ENDED");
-  const ended = all.filter((c) => c.published && livePhase(c.starts_at, c.ends_at, now) === "ENDED");
+  const stageOf = (c: ContestSummary): Stage => {
+    if (!c.published) return "draft";
+    const p = livePhase(c.starts_at, c.ends_at, now);
+    return p === "UPCOMING" ? "scheduled" : p === "RUNNING" ? "live" : "finished";
+  };
+  const board: Record<Stage, ContestSummary[]> = { draft: [], scheduled: [], live: [], finished: [] };
+  for (const c of all) board[stageOf(c)].push(c);
+  const newcomer = mine.data !== undefined && all.length === 0;
+  const name = user?.display_name?.split(" ")[0] ?? user?.username;
 
   return (
-    <div>
+    <div className="mx-auto max-w-6xl">
       <HostTabs />
-      <HubHero
-        eyebrow="Host"
-        title={
-          <>
-            Run your own <span className="text-accent-shine">rounds.</span>
-          </>
-        }
-        description="The contests you host or co-author, drafts included, and the problems you write for them. Each card shows what is left before a round can go live."
-        aside={<PlanCard />}
-        actions={
-          <>
-            <Link to={host.to} className="btn btn-primary min-h-[44px] px-5">
-              <Plus size={16} aria-hidden="true" /> {host.label}
-            </Link>
-            <Link to="/studio/problems" className="btn btn-outline min-h-[44px] px-5">
-              <PenSquare size={16} aria-hidden="true" /> My problems
-            </Link>
-          </>
-        }
-        stats={
-          mine.data
-            ? [
-                { label: "Contests", value: all.length },
-                { label: "Drafts", value: drafts.length, tone: drafts.length ? "accent" : undefined },
-                { label: "Published", value: active.length + ended.length, hint: active.length ? `${active.length} upcoming or live` : undefined },
-                { label: "Registrations", value: all.reduce((n, c) => n + c.participants, 0) },
-              ]
-            : undefined
-        }
-      />
-
-      {mine.isPending ? (
-        <Spinner label="Loading your contests…" />
-      ) : mine.isError ? (
-        <ErrorState title="Couldn't load your contests" message={mine.error.message} onRetry={() => mine.refetch()} />
-      ) : all.length === 0 ? (
-        <div className="relative overflow-hidden rounded-2xl border border-dashed border-line-strong/70 bg-surface/50 px-6 py-14 text-center">
-          <div className="pointer-events-none absolute left-1/2 top-0 h-40 w-72 -translate-x-1/2 rounded-full bg-accent/15 blur-3xl" aria-hidden="true" />
-          <div className="relative mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-accent/25 bg-accent/10 text-accent">
-            <Swords size={24} aria-hidden="true" />
-          </div>
-          <p className="relative mt-4 font-display text-lg font-semibold text-ink">You haven't hosted a contest yet</p>
-          <p className="relative mx-auto mt-1 max-w-sm text-sm text-muted">
-            Write a couple of problems in your studio, then set up a round and invite co-authors.
+      <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="eyebrow mb-1.5">Host</p>
+          <h1 className="font-display text-[2.25rem] font-semibold leading-none tracking-tight text-ink sm:text-[2.75rem]">Your contests</h1>
+          <p className="mt-2.5 text-[0.9375rem] text-muted">
+            {greeting(new Date(now).getHours())}
+            {name ? `, ${name}` : ""}.{" "}
+            {mine.data
+              ? all.length
+                ? `${board.live.length ? `${board.live.length} live, ` : ""}${board.scheduled.length} scheduled, ${board.draft.length} in draft.`
+                : "Let's set up your first round."
+              : ""}
           </p>
-          <Link to={host.to} className="btn btn-primary relative mt-5">
-            {host.label} <ArrowRight size={15} aria-hidden="true" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/studio/problems/new" className="btn btn-outline min-h-[44px] px-5">
+            <PenSquare size={16} aria-hidden="true" /> New problem
+          </Link>
+          <Link to={host.to} className="btn btn-primary min-h-[44px] px-5">
+            <Plus size={16} aria-hidden="true" /> {host.canHost ? "New contest" : host.label}
           </Link>
         </div>
-      ) : (
-        <div className="space-y-12">
-          <Group title="Drafts" items={drafts} now={now} />
-          <Group title="Upcoming and live" items={active} now={now} />
-          <Group title="Finished" items={ended} now={now} />
-        </div>
-      )}
+      </header>
 
-      <YourProblems />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="min-w-0 space-y-6">
+          {newcomer && <GettingStarted problemCount={problems.data?.total ?? 0} hostTo={host.to} canHost={host.canHost} />}
+          {mine.isPending ? (
+            <Spinner label="Loading your contests…" />
+          ) : mine.isError ? (
+            <ErrorState title="Couldn't load your contests" message={mine.error.message} onRetry={() => mine.refetch()} />
+          ) : (
+            !newcomer && (
+              <section aria-labelledby="board-h">
+                <h2 id="board-h" className="sr-only">
+                  Contests by stage
+                </h2>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" aria-label="Your contests" role="list">
+                  {STAGES.map(([stage, label, Icon, hint]) => (
+                    <div key={stage} role="listitem" className="flex min-w-0 flex-col rounded-2xl border border-line/70 bg-paper/50 p-3">
+                      <div className="mb-3 flex items-center justify-between px-1" title={hint}>
+                        <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                          <Icon size={15} className={stage === "live" ? "text-good" : "text-accent"} aria-hidden="true" />
+                          {label}
+                        </p>
+                        <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium tabular text-faint ring-1 ring-line/70">{board[stage].length}</span>
+                      </div>
+                      {board[stage].length === 0 ? (
+                        <p className="rounded-xl border border-dashed border-line-strong/60 px-3 py-6 text-center text-xs text-faint">{hint}</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {board[stage].map((c) => (
+                            <BoardCard key={c.slug} c={c} stage={stage} now={now} />
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )
+          )}
+        </div>
+
+        <div className="space-y-4 lg:sticky lg:top-24">
+          <PlanCard />
+          <YourProblems data={problems.data} loading={problems.isPending} />
+        </div>
+      </div>
     </div>
   );
 }
 
-function Group({ title, items, now }: { title: string; items: ContestSummary[]; now: number }) {
-  if (items.length === 0) return null;
+/** A contest on the board, with what it needs next. */
+function BoardCard({ c, stage, now }: { c: ContestSummary; stage: Stage; now: number }) {
+  // A draft is ready when it has problems; publishing is the last step.
+  const steps = 1 + (c.problem_count > 0 ? 1 : 0);
   return (
-    <section aria-label={title} className="reveal">
-      <SectionHead title={title} count={items.length} />
-      <ul className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-        {items.map((c) => (
-          <li key={c.slug}>
-            <HostedCard c={c} now={now} />
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function HostedCard({ c, now }: { c: ContestSummary; now: number }) {
-  const phase = livePhase(c.starts_at, c.ends_at, now);
-  const steps: [string, boolean][] = [
-    ["Details and schedule", true],
-    [c.problem_count > 0 ? `${c.problem_count} problem${c.problem_count === 1 ? "" : "s"} added` : "Add problems", c.problem_count > 0],
-    [c.published ? "Published" : "Publish it", c.published],
-  ];
-  const done = steps.filter(([, ok]) => ok).length;
-  return (
-    <article className="card card-hover flex h-full flex-col overflow-hidden">
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-center justify-between gap-2">
-          <PhaseBadge phase={phase} published={c.published} />
-          <span className="chip">{c.my_role === "OWNER" ? "Owner" : "Co-author"}</span>
-        </div>
-        <h3 className="mt-3 font-display text-xl font-semibold tracking-tight text-ink">
-          <Link to={`/contests/${c.slug}`} className="hover:text-accent">
+    <li className="group rounded-xl border border-line/80 bg-surface p-3 shadow-sm transition-[border-color,box-shadow] hover:border-accent/40 hover:shadow-panel">
+      <div className="flex items-start gap-3">
+        {stage === "draft" && <Ring value={steps} max={3} label={`Setup ${steps} of 3`} />}
+        <div className="min-w-0 flex-1">
+          <Link to={`/contests/${c.slug}/manage`} className="block truncate text-sm font-semibold text-ink hover:text-accent">
             {c.title}
           </Link>
-        </h3>
-        <p className="mt-1 text-xs text-faint">
-          {formatWhen(c.starts_at)} · {formatDuration(c.duration_minutes)} · {FORMAT_LABELS[c.format]}
-        </p>
-        <p className="mt-2 text-sm">
+          <p className="mt-0.5 truncate text-xs text-faint">
+            {formatWhen(c.starts_at)} · {formatDuration(c.duration_minutes)}
+          </p>
+        </div>
+      </div>
+      <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+        <span className="flex items-center gap-1">
+          <FileCode2 size={12} aria-hidden="true" /> {c.problem_count}
+        </span>
+        <span className="flex items-center gap-1">
+          <Users size={12} aria-hidden="true" /> {c.participants}
+        </span>
+        <span className="truncate">{FORMAT_LABELS[c.format].replace(" rules", "")}</span>
+        {c.my_role === "AUTHOR" && <span className="chip px-1.5 py-0 text-[0.625rem]">co-author</span>}
+      </p>
+      {stage === "draft" && (
+        <p className="mt-2 text-xs font-medium text-warn">{c.problem_count === 0 ? "Next: add problems" : "Next: publish it"}</p>
+      )}
+      {(stage === "scheduled" || stage === "live") && (
+        <p className="mt-2 text-xs">
           <Countdown startsAt={c.starts_at} endsAt={c.ends_at} now={now} />
-          <span className="text-faint"> · {c.participants} registered</span>
         </p>
-
-        {!c.published && (
-          <div className="mt-4 rounded-xl border border-line/70 bg-paper/50 p-3">
-            <div className="mb-2 flex items-center justify-between text-xs">
-              <span className="font-medium text-ink">Setup</span>
-              <span className="text-faint tabular">
-                {done} of {steps.length}
-              </span>
-            </div>
-            <div className="progress-track">
-              <div className="progress-fill" style={{ width: `${(done / steps.length) * 100}%` }} />
-            </div>
-            <ul className="mt-3 space-y-1.5">
-              {steps.map(([label, ok]) => (
-                <li key={label} className={`flex items-center gap-2 text-xs ${ok ? "text-muted" : "font-medium text-ink"}`}>
-                  {ok ? (
-                    <span className="grid h-4 w-4 place-items-center rounded-full bg-good/15 text-good">
-                      <Check size={10} strokeWidth={3} aria-hidden="true" />
-                    </span>
-                  ) : (
-                    <Circle size={16} className="text-line-strong" aria-hidden="true" />
-                  )}
-                  {label}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-      <div className="flex items-center gap-2 border-t border-line/70 bg-paper/40 px-5 py-3">
-        <Link to={`/contests/${c.slug}/manage`} className="btn btn-primary min-h-[34px] flex-1 px-3 text-xs" aria-label={`Manage ${c.title}`}>
-          <Settings2 size={14} aria-hidden="true" /> Manage
+      )}
+      <div className="mt-3 flex gap-1.5">
+        <Link to={`/contests/${c.slug}/manage`} className="btn btn-outline min-h-[30px] flex-1 px-2 text-xs" aria-label={`Manage ${c.title}`}>
+          <Settings2 size={12} aria-hidden="true" /> Manage
         </Link>
-        <Link to={`/contests/${c.slug}`} className="btn btn-outline min-h-[34px] px-3 text-xs" aria-label={`Open ${c.title}`}>
-          <ExternalLink size={14} aria-hidden="true" /> View
+        <Link to={stage === "finished" ? `/contests/${c.slug}/standings` : `/contests/${c.slug}`} className="btn btn-ghost min-h-[30px] px-2 text-xs" aria-label={`Open ${c.title}`}>
+          <ArrowRight size={13} aria-hidden="true" />
         </Link>
       </div>
-    </article>
+    </li>
   );
 }
 
-/** The hero's right side: whether you can host right now, and until when. */
+/** Your Host plan, as a membership card. */
 function PlanCard() {
   const me = useQuery({ queryKey: ["billing-me"], queryFn: () => billingApi.me(), staleTime: 60_000 });
   if (!me.data) return null;
   const until = me.data.hosting_until ? new Date(me.data.hosting_until) : null;
   const active = until !== null && until.getTime() > Date.now();
   const days = until ? Math.ceil((until.getTime() - Date.now()) / 86_400_000) : 0;
+  const ok = active || me.data.can_host;
+  const title = active ? "Host plan" : me.data.can_host ? (me.data.required ? "Admin hosting" : "Free hosting") : until ? "Plan ended" : "No Host plan";
+  const line = active
+    ? `${days} day${days === 1 ? "" : "s"} left · until ${formatWhen(until!.toISOString())}`
+    : me.data.can_host
+      ? "You can publish contests"
+      : "Needed to publish a contest";
   return (
-    <div className="rounded-2xl border border-line/70 bg-surface/80 p-5 backdrop-blur">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-faint">Host plan</p>
-      {active ? (
-        <>
-          <p className="mt-2 flex items-center gap-2 font-display text-lg font-semibold text-ink">
-            <BadgeCheck size={18} className="text-good" aria-hidden="true" /> Active
-          </p>
-          <p className="mt-0.5 text-sm text-muted">
-            {days} day{days === 1 ? "" : "s"} left, until {formatWhen(until!.toISOString())}
-          </p>
-        </>
-      ) : me.data.can_host ? (
-        <p className="mt-2 text-sm text-muted">{me.data.required ? "Admins host without a plan." : "Hosting is free on this server."}</p>
-      ) : (
-        <p className="mt-2 text-sm text-muted">{until ? "Your plan has ended. Renew it to publish again." : "You need a plan to host a contest."}</p>
+    <div
+      className={`relative overflow-hidden rounded-2xl p-5 text-white shadow-[0_20px_40px_-24px_rgb(0_0_0/0.5)] ${ok ? "" : "opacity-95"}`}
+      style={{
+        background: ok
+          ? "linear-gradient(135deg, rgb(var(--c-accent)) 0%, rgb(var(--c-accent-hover)) 60%, rgb(15 23 42) 140%)"
+          : "linear-gradient(135deg, rgb(71 85 105) 0%, rgb(30 41 59) 100%)",
+      }}
+    >
+      <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/15 blur-2xl" aria-hidden="true" />
+      <div className="relative flex items-center justify-between">
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+          <BadgeCheck size={14} aria-hidden="true" /> VoidRun Host
+        </p>
+        <Sparkles size={16} className="text-white/70" aria-hidden="true" />
+      </div>
+      <p className="relative mt-6 font-display text-xl font-semibold">{title}</p>
+      <p className="relative mt-0.5 text-sm text-white/80">{line}</p>
+      {active && (
+        <div className="relative mt-3 h-1 overflow-hidden rounded-full bg-white/20">
+          <div className="h-full rounded-full bg-white" style={{ width: `${Math.min(100, (days / 365) * 100)}%` }} />
+        </div>
       )}
-      <Link to="/pricing" className="btn btn-outline mt-4 w-full min-h-[36px] text-sm">
-        {active ? "Extend or see payments" : me.data.can_host ? "See plans" : "Get a Host plan"}
+      <Link to="/pricing" className="relative mt-4 inline-flex items-center gap-1 text-sm font-semibold text-white hover:underline">
+        {active ? "Manage plan" : ok ? "See plans" : "Get a Host plan"} <ArrowRight size={14} aria-hidden="true" />
       </Link>
     </div>
   );
 }
 
-/** A glance at the problems you've written, most recent first. */
-function YourProblems() {
-  const problems = useQuery({
-    queryKey: ["admin-problems", "studio", { page: 1, limit: 6 }],
-    queryFn: () => studioApi.listProblems({ page: 1, limit: 6 }),
-  });
-  const items = problems.data?.items ?? [];
+/** The three steps, with an illustration, until the first contest exists. */
+function GettingStarted({ problemCount, hostTo, canHost }: { problemCount: number; hostTo: string; canHost: boolean }) {
+  const steps: [string, string, boolean, string | null, string][] = [
+    ["Write or import a problem", "From scratch, or paste a Codeforces or AtCoder link.", problemCount > 0, "/studio/problems/new", problemCount > 0 ? "Add another" : "New problem"],
+    ["Set up the contest", "Pick the rules and the time, then add your problems.", false, hostTo, canHost ? "New contest" : "Get a Host plan"],
+    ["Publish it", "People register, compete and watch live standings.", false, null, ""],
+  ];
   return (
-    <section aria-labelledby="your-problems-h" className="reveal mt-12">
-      <SectionHead
-        id="your-problems-h"
-        icon={FileCode2}
-        title="Your problems"
-        count={problems.data?.total}
-        right={
-          <div className="flex gap-2">
-            <Link to="/studio/problems" className="btn btn-ghost min-h-[34px] px-3 text-xs">
-              All problems
-            </Link>
-            <Link to="/studio/problems/new" className="btn btn-outline min-h-[34px] px-3 text-xs">
-              <Plus size={14} aria-hidden="true" /> New problem
-            </Link>
-          </div>
-        }
-      />
-      {problems.isPending ? (
-        <Spinner label="Loading your problems…" />
+    <section aria-labelledby="start-h" className="overflow-hidden rounded-[1.5rem] border border-line/80 bg-surface shadow-panel">
+      <div className="grid gap-6 p-5 sm:p-7 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-center">
+        <div>
+          <h2 id="start-h" className="font-display text-xl font-semibold tracking-tight text-ink">
+            Host your first round in three steps
+          </h2>
+          <ol className="mt-5 space-y-4">
+            {steps.map(([title, hint, done, to, cta], i) => (
+              <li key={title} className="flex gap-3">
+                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-sm font-semibold ${done ? "bg-good/15 text-good" : "bg-accent/10 text-accent"}`}>
+                  {done ? <Check size={15} strokeWidth={3} aria-hidden="true" /> : i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-ink">{title}</p>
+                  <p className="text-sm text-muted">{hint}</p>
+                </div>
+                {to && (
+                  <Link to={to} className="shrink-0 self-center text-sm font-medium text-accent hover:underline">
+                    {cta} →
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+        <ContestBuilder />
+      </div>
+    </section>
+  );
+}
+
+/** Your latest problems beside the board, flagging the ones that can't be judged yet. */
+function YourProblems({ data, loading }: { data?: Paginated<AdminProblem>; loading: boolean }) {
+  const items = data?.items ?? [];
+  return (
+    <aside aria-labelledby="your-problems-h" className="card overflow-hidden">
+      <div className="flex items-center justify-between border-b border-line/70 px-4 py-3">
+        <h2 id="your-problems-h" className="flex items-center gap-2 text-sm font-semibold text-ink">
+          <FileCode2 size={15} className="text-accent" aria-hidden="true" /> Your problems
+          {data && <span className="rounded-full bg-sunken px-1.5 text-xs font-medium text-faint">{data.total}</span>}
+        </h2>
+        <Link to="/studio/problems/new" className="text-xs font-medium text-accent hover:underline">
+          + New
+        </Link>
+      </div>
+      {loading ? (
+        <p className="px-4 py-5 text-sm text-faint">Loading…</p>
       ) : items.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-line-strong/70 bg-surface/50 p-6 text-sm text-muted">
-          No problems yet. Write one, or import one from Codeforces or AtCoder, then add it to a contest.
-        </p>
+        <p className="px-4 py-5 text-sm text-muted">No problems yet. Write one, or import one from Codeforces or AtCoder.</p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="divide-y divide-line/70">
           {items.map((p) => (
             <li key={p.id}>
-              <Link to={`/studio/problems/${p.id}`} className="card card-hover block p-4">
-                <p className="truncate font-semibold text-ink">{p.title}</p>
-                <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-faint">
-                  <span>{p.difficulty[0] + p.difficulty.slice(1).toLowerCase()}</span>
-                  <span>·</span>
-                  <span>
+              <Link to={`/studio/problems/${p.id}`} className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-sunken/50">
+                <span className={`h-2 w-2 shrink-0 rounded-full ${p.hidden_count === 0 ? "bg-warn" : "bg-good"}`} aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-ink">{p.title}</span>
+                  <span className="block text-xs text-faint">
                     {p.sample_count} sample{p.sample_count === 1 ? "" : "s"}, {p.hidden_count} hidden
+                    {p.contests.length > 0 && ` · in ${p.contests.length} contest${p.contests.length === 1 ? "" : "s"}`}
                   </span>
-                  {p.contests.length > 0 && (
-                    <>
-                      <span>·</span>
-                      <span>
-                        in {p.contests.length} contest{p.contests.length === 1 ? "" : "s"}
-                      </span>
-                    </>
-                  )}
-                </p>
-                {p.hidden_count === 0 && <p className="mt-2 text-xs font-medium text-warn">needs hidden tests</p>}
+                </span>
+                {p.hidden_count === 0 && <span className="shrink-0 text-xs font-medium text-warn">needs tests</span>}
               </Link>
             </li>
           ))}
         </ul>
       )}
-    </section>
+      <Link to="/studio/problems" className="flex items-center justify-center gap-1.5 border-t border-line/70 px-4 py-2.5 text-sm font-medium text-accent hover:bg-sunken/40">
+        All problems <ArrowRight size={14} aria-hidden="true" />
+      </Link>
+    </aside>
   );
 }

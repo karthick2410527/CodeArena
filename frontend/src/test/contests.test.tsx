@@ -119,11 +119,9 @@ describe("the contests page", () => {
     for (const link of within(screen.getByRole("main")).queryAllByRole("link", { name: /host a contest/i })) {
       expect(link).toHaveAttribute("href", "/contests/new");
     }
-    // Your own rounds are listed apart, so the general list leaves them out.
-    const upcomingCall = api.calls.find((c) => c.key === "GET /contests" && c.url.searchParams.get("phase") === "upcoming");
-    expect(upcomingCall?.url.searchParams.get("exclude")).toBe("hosted,registered");
-    expect(screen.getByRole("region", { name: "Registered" })).toBeInTheDocument();
-    // Hosting has its own section, so the Contests page doesn't offer it.
+    // The live round is the one to act on now, at the top.
+    expect(screen.getByRole("region", { name: "Live now: Live Round" })).toBeInTheDocument();
+    // Hosting lives under Host, not here.
     expect(screen.queryByRole("region", { name: "Hosting" })).not.toBeInTheDocument();
   });
 
@@ -134,8 +132,11 @@ describe("the contests page", () => {
         json([{ contest: contest({ slug: "mine-reg", title: "Signed Up Round", registered: true }), rank: null, ranked: 0, solved: 0, score: 0 }]),
     });
     renderSignedIn("/contests");
-    const reg = await screen.findByRole("region", { name: "Registered" });
-    expect(await within(reg).findByRole("link", { name: "Signed Up Round" })).toHaveAttribute("href", "/contests/mine-reg");
+    await userEvent.click(await screen.findByRole("tab", { name: /my contests/i }));
+    const reg = await screen.findByRole("list", { name: "Registered" });
+    expect(within(reg).getByRole("link", { name: /Signed Up Round/ })).toHaveAttribute("href", "/contests/mine-reg");
+    // It is also the round to watch next, on top.
+    expect(screen.getByRole("region", { name: "Your next round: Signed Up Round" })).toBeInTheDocument();
   });
 });
 
@@ -146,7 +147,7 @@ describe("the Host section", () => {
     const primary = await screen.findByRole("navigation", { name: "Primary" });
     expect(within(primary).getByRole("link", { name: "Host" })).toHaveAttribute("aria-current", "page");
     expect(within(primary).getByRole("link", { name: /contests/i })).not.toHaveAttribute("aria-current");
-    expect(await screen.findByRole("heading", { level: 1, name: /run your own rounds/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Your contests" })).toBeInTheDocument();
     const tabs = screen.getByRole("navigation", { name: "Host pages" });
     expect(within(tabs).getByRole("link", { name: /problems/i })).toHaveAttribute("href", "/studio/problems");
     expect(screen.getByRole("heading", { name: /your problems/i })).toBeInTheDocument();
@@ -344,7 +345,8 @@ describe("signed out", () => {
       "GET /contests": (url) => json(paginated(url.searchParams.get("phase") === "upcoming" ? [contest()] : [])),
     });
     renderApp("/contests");
-    expect(await screen.findByRole("link", { name: /sign in to register/i })).toHaveAttribute("href", "/login");
+    const links = await screen.findAllByRole("link", { name: /sign in to register/i });
+    expect(links.map((l) => l.getAttribute("href"))).toEqual(links.map(() => "/login"));
     expect(screen.queryByRole("link", { name: /host a contest/i })).not.toBeInTheDocument();
   });
 });
@@ -366,7 +368,8 @@ describe("joined contests", () => {
         ]),
     });
     renderSignedIn("/contests/joined");
-    const ahead = await screen.findByRole("list", { name: "Live and upcoming" });
+    // The old Joined page now opens the My contests tab.
+    const ahead = await screen.findByRole("list", { name: "Registered" });
     expect(within(ahead).getByRole("link", { name: /Next Round/ })).toHaveAttribute("href", "/contests/next");
     expect(ahead).toHaveTextContent(/starts in/i);
     const results = screen.getByRole("list", { name: "Results" });
@@ -387,5 +390,17 @@ describe("community problems", () => {
     expect(await screen.findByText(/problems go public through contests/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Publish" })).not.toBeInTheDocument();
     expect(within(screen.getByRole("main")).getByRole("link", { name: "Host a contest" })).toHaveAttribute("href", "/contests/new");
+  });
+});
+
+describe("a contest's submissions tab", () => {
+  it("opens for a signed-in contestant instead of crashing", async () => {
+    mockApi({
+      ...baseRoutes(),
+      "GET /contests/round-1": () => json(contestDetail(running())),
+      "GET /contests/round-1/submissions": () => json([]),
+    });
+    renderSignedIn("/contests/round-1/submissions");
+    expect(await screen.findByText(/haven’t submitted anything to this contest yet/i)).toBeInTheDocument();
   });
 });

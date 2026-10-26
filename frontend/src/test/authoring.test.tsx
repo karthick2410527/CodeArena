@@ -117,7 +117,7 @@ describe("a problem written for a contest", () => {
     expect(api.bodiesFor("PUT /contests/round-1/problems")).toEqual([[{ problem_id: NEW_ID }]]);
     const problems = screen.getByRole("region", { name: "Problems" });
     expect(within(problems).getByText("needs hidden tests")).toBeInTheDocument();
-    expect(within(problems).getByRole("link", { name: /write a new problem/i })).toHaveAttribute(
+    expect(within(problems).getByRole("link", { name: /^write$/i })).toHaveAttribute(
       "href",
       "/studio/problems/new?contest=round-1",
     );
@@ -181,8 +181,8 @@ describe("your name", () => {
     await waitFor(() => expect(name).toHaveValue("Ada Lovelace"));
     await userEvent.clear(name);
     await userEvent.type(name, "Ada King");
-    await userEvent.click(screen.getByRole("button", { name: "Save name" }));
-    expect(await screen.findByText("Name saved.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Saved.")).toBeInTheDocument();
     expect(api.bodiesFor("PATCH /users/me")).toEqual([{ display_name: "Ada King" }]);
   });
 });

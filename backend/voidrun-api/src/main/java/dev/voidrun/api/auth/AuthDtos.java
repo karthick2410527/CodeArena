@@ -15,6 +15,15 @@ public final class AuthDtos {
 
     public record RefreshRequest(String refreshToken) {}
 
+    /** @param purpose {@code login} (the default) or {@code reset} */
+    public record EmailCodeRequest(String email, String purpose) {}
+
+    public record CodeLoginRequest(String email, String code) {}
+
+    public record ResetPasswordRequest(String email, String code, String password) {}
+
+    public record EmailSignIn(boolean enabled) {}
+
     public record UserDto(
             UUID id,
             String username,

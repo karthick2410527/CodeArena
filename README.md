@@ -23,6 +23,7 @@ Then open **http://localhost:5173**. The first `make up` builds the two sandbox 
 |---|---|
 | http://localhost:5173 | The web app |
 | http://localhost:8080/actuator/health | API health |
+| http://localhost:8025 | Mailpit: the sign-in codes the app "sends" |
 
 Useful commands:
 
@@ -40,6 +41,7 @@ Everything is configured in one file, **`.env`**, copied from [`.env.example`](.
 | Feature | Settings | Without them |
 |---|---|---|
 | Sign in with Google / GitHub | `GOOGLE_CLIENT_ID` / `_SECRET`, `GITHUB_CLIENT_ID` / `_SECRET` | Email and password sign-in only |
+| Email sign-in codes and "Forgot password" sent as real mail | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | Locally, mail is caught by Mailpit at http://localhost:8025 |
 | Real payments for Host plans | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | A test checkout that moves no money (`TEST_PAYMENTS=true`) |
 | Free hosting for everyone | `HOST_PLAN_REQUIRED=false` | Hosting needs a plan; admins never do |
 | Production | `DOMAIN`, `FRONTEND_URL`, `JWT_SECRET`, `POSTGRES_PASSWORD` | Local defaults |
@@ -90,7 +92,7 @@ flowchart LR
 - **Sandboxes.** Every execution gets its own container with no network, a read-only file system, no Linux capabilities, an unprivileged user and limits on memory, CPU and processes.
 - **Live standings.** Each API instance follows the verdict topic and pushes standings to the browser over Server-Sent Events.
 
-More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). How C++, Java and Node.js code is compiled, limited and judged, and how the Java backend and the Node.js-built frontend connect: [docs/LANGUAGES.md](docs/LANGUAGES.md).
 
 ## Project layout
 
@@ -118,6 +120,7 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 └── docs/
     ├── API.md                every endpoint
     ├── ARCHITECTURE.md       how a submission travels; the reliability rules
+    ├── LANGUAGES.md          Java and Node.js judging: flags, limits, verdicts; backend ↔ frontend
     ├── DEPLOY.md             sign-in providers, Razorpay, going live
     ├── DEPLOY-AZURE.md       step by step: GitHub to a live Azure VM
     ├── history/              notes from the earlier Rust version

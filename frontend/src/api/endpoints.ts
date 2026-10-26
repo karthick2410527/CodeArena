@@ -52,8 +52,18 @@ export const authApi = {
   logout: (refresh_token: string) =>
     request<void>("/auth/logout", { method: "POST", body: { refresh_token }, auth: false }),
   me: () => request<User>("/users/me"),
-  /** Changes the name shown on your profile and in standings; blank shows the username. */
-  updateMe: (body: { display_name: string }) => request<User>("/users/me", { method: "PATCH", body }),
+  /** Changes the name shown on your profile and in standings (blank shows the username), the username, or both. */
+  updateMe: (body: { display_name?: string; username?: string }) => request<User>("/users/me", { method: "PATCH", body }),
+
+  /** Whether this server can email sign-in codes. */
+  emailSignIn: () => request<{ enabled: boolean }>("/auth/email", { auth: false }),
+  /** Emails a six-digit code if an account has this address; the answer is the same either way. */
+  requestCode: (email: string, purpose: "login" | "reset") =>
+    request<void>("/auth/email/code", { method: "POST", body: { email, purpose }, auth: false }),
+  codeLogin: (body: { email: string; code: string }) =>
+    request<AuthResponse>("/auth/email/login", { method: "POST", body, auth: false }),
+  resetPassword: (body: { email: string; code: string; password: string }) =>
+    request<AuthResponse>("/auth/password/reset", { method: "POST", body, auth: false }),
   stats: () => request<UserStats>("/users/me/stats"),
 
   providers: () => request<AuthProvider[]>("/auth/providers", { auth: false }),

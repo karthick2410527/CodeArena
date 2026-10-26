@@ -6,6 +6,7 @@ import ProblemListPage from "./pages/ProblemListPage";
 import ProblemDetailPage from "./pages/ProblemDetailPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
 import SubmissionsPage from "./pages/SubmissionsPage";
 import SubmissionDetailPage from "./pages/SubmissionDetailPage";
@@ -29,7 +30,6 @@ import ContestLayout, {
 import ContestProblemPage from "./pages/contests/ContestProblemPage";
 import ContestEditPage from "./pages/contests/ContestEditPage";
 import MyContestsPage from "./pages/contests/MyContestsPage";
-import JoinedContestsPage from "./pages/contests/JoinedContestsPage";
 import PricingPage from "./pages/PricingPage";
 
 export default function App() {
@@ -40,6 +40,7 @@ export default function App() {
       {/* Full-screen pages with their own chrome. */}
       <Route path="login" element={<LoginPage />} />
       <Route path="register" element={<RegisterPage />} />
+      <Route path="forgot-password" element={<ForgotPasswordPage />} />
       <Route path="auth/callback" element={<AuthCallbackPage />} />
 
       <Route element={<Layout />}>
@@ -66,7 +67,7 @@ export default function App() {
           <Route path="submissions" element={<SubmissionsPage />} />
           <Route path="submissions/:id" element={<SubmissionDetailPage />} />
           <Route path="replays/:id" element={<ReplayPage />} />
-          <Route path="contests/joined" element={<JoinedContestsPage />} />
+          <Route path="contests/joined" element={<Navigate to="/contests?tab=mine" replace />} />
           <Route path="contests/new" element={<ContestEditPage />} />
           <Route path="contests/:slug/manage" element={<ContestEditPage />} />
           <Route path="studio" element={<Navigate to="/studio/problems" replace />} />

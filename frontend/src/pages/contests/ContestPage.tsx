@@ -146,14 +146,18 @@ function Shell({ d, phase, now }: ContestContext) {
             </Link>
           </h1>
           <PhaseBadge phase={phase} published={c.published} />
-          {live && (
+          {live && phase === "RUNNING" && (
             <span className="flex items-center gap-1 text-xs text-good" title="Standings update as verdicts arrive">
               <Radio size={13} aria-hidden="true" /> live
             </span>
           )}
           <div className="ml-auto flex items-center gap-3">
-            <span className="text-base">
-              <Countdown startsAt={c.starts_at} endsAt={c.ends_at} now={now} />
+            <span className="text-sm">
+              {phase === "ENDED" ? (
+                <span className="text-muted">Ended {formatWhen(c.ends_at)}</span>
+              ) : (
+                <Countdown startsAt={c.starts_at} endsAt={c.ends_at} now={now} />
+              )}
             </span>
             <Action c={c} phase={phase} signedIn={signedIn} busy={register.isPending} onToggle={() => register.mutate()} />
           </div>
@@ -409,7 +413,7 @@ export function ContestStandings() {
   if (standings.isError) {
     return <ErrorState title="Couldn't load standings" message={standings.error.message} onRetry={() => standings.refetch()} />;
   }
-  return <StandingsTable view={standings.data} me={user?.username} />;
+  return <StandingsTable view={standings.data} me={user?.username} problems={d.problems} />;
 }
 
 export function ContestSubmissions() {

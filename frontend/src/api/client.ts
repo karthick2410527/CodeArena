@@ -149,5 +149,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
 
   if (!res.ok) throw await parseError(res);
   if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  // 202 Accepted and the like may carry no body at all.
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
   Check,
   Flame,
   Link2,
+  Pencil,
   PenLine,
   Sparkles,
   Target,
@@ -18,6 +19,8 @@ import DifficultyBadge from "../components/DifficultyBadge";
 import { EmptyState, ErrorState, Spinner } from "../components/Feedback";
 import { FORMAT_LABELS, formatWhen } from "../components/contest";
 import { Avatar } from "../components/people";
+import { EditProfileDialog } from "../components/EditProfile";
+import { useAuth } from "../auth/AuthContext";
 
 /** Anyone's public profile, at /u/:username. */
 export default function UserProfilePage() {
@@ -266,6 +269,11 @@ export function ProfileView({
 function Hero({ p }: { p: Profile }) {
   const lv = level(p.solved.total);
   const [copied, setCopied] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [editing, setEditing] = useState(false);
+  const mine = user?.username.toLowerCase() === p.username.toLowerCase();
   const share = async () => {
     try {
       await navigator.clipboard.writeText(
@@ -322,6 +330,11 @@ function Hero({ p }: { p: Profile }) {
             <Sparkles size={14} aria-hidden="true" /> {lv.name}
           </span>
           {p.role === "ADMIN" && <span className="chip">admin</span>}
+          {mine && user && (
+            <button type="button" className="btn btn-outline min-h-[34px] px-3 text-xs" onClick={() => setEditing(true)}>
+              <Pencil size={14} aria-hidden="true" /> Edit profile
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-outline min-h-[34px] px-3 text-xs"
@@ -332,6 +345,18 @@ function Hero({ p }: { p: Profile }) {
           </button>
         </div>
       </div>
+      {editing && user && (
+        <EditProfileDialog
+          user={user}
+          onClose={() => setEditing(false)}
+          onSaved={(next) => {
+            setEditing(false);
+            if (next.username !== p.username && pathname.startsWith("/u/")) {
+              navigate(`/u/${encodeURIComponent(next.username)}`, { replace: true });
+            }
+          }}
+        />
+      )}
       {lv.next !== null && (
         <div className="px-5 pb-5 sm:px-8">
           <div className="flex justify-between text-xs text-faint">
